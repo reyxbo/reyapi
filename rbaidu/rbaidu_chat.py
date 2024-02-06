@@ -12,7 +12,7 @@
 from typing import Any, List, Dict, Literal, Union, Optional
 from datetime import datetime, timedelta
 from reytool.rrandom import randi
-from reytool.rregex import findall, sub
+from reytool.rregex import search, findall, sub
 from reytool.rsystem import catch_exc
 from reytool.rtime import now
 
@@ -283,21 +283,27 @@ class RAPIBaiduChat(RAPIBaidu):
 
         # Get parameter.
         character = randi(self.characters)
-
-        # Modify.
         pattern = "[\'\"‘’“”]"
         text_modify = sub(pattern, text)
+        text_modify_len = len(text_modify)
+
+        # Modify.
         text_modify = "%s的润色这句话“%s”" % (character, text_modify)
         text_modify = self.chat(text_modify)
 
         # Extract.
-        pattern = "[\'\"‘“]([^\'\"‘“’”]+?)[\'\"’”]"
+        pattern = "\'[^\']+\'|\"[^\"]+\"|‘[^‘]+’|“[^“]+”"
         re_texts = findall(pattern, text_modify)
         result = None
+        result_len = 0
         for re_text in re_texts:
-            if re_text != text:
-                result = re_text
+            re_text = re_text[1:-1]
+            re_text_len = len(re_text)
+            if re_text_len < text_modify_len:
                 break
+            if re_text_len > result_len:
+                result = re_text
+                result_len = re_text_len
         if result is None:
             if "润色" not in text_modify:
                 result = text_modify
