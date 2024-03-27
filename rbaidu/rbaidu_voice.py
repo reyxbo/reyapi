@@ -17,6 +17,11 @@ from reytool.rtime import wait
 from .rbaidu_base import RAPIBaidu
 
 
+__all__ = (
+    "RAPIBaiduVoice",
+)
+
+
 class RAPIBaiduVoice(RAPIBaidu):
     """
     Rey's `Baidu API voice` type.

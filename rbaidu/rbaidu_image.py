@@ -16,6 +16,11 @@ from reytool.rtime import wait
 from .rbaidu_base import RAPIBaidu
 
 
+__all__ = (
+    "RAPIBaiduImage",
+)
+
+
 class RAPIBaiduImage(RAPIBaidu):
     """
     Rey's `Baidu API image` type.

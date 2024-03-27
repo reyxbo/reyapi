@@ -17,6 +17,11 @@ from reytool.rcomm import request as reytool_request
 from reytool.rtime import now
 
 
+__all__ = (
+    "RAPIBaidu",
+)
+
+
 class RAPIBaidu(object):
     """
     Rey's `Baidu API` type.

@@ -19,6 +19,11 @@ from reytool.rtime import now
 from .rbaidu_base import RAPIBaidu
 
 
+__all__ = (
+    "RAPIBaiduChat",
+)
+
+
 class RAPIBaiduChat(RAPIBaidu):
     """
     Rey's `Baidu API chat` type.

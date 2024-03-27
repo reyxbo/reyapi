@@ -19,11 +19,3 @@ from .rbaidu_base import *
 from .rbaidu_chat import *
 from .rbaidu_image import *
 from .rbaidu_voice import *
-
-
-__all__ = (
-    "RAPIBaidu",
-    "RAPIBaiduChat",
-    "RAPIBaiduImage",
-    "RAPIBaiduVoice"
-)
