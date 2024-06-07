@@ -126,8 +126,8 @@ class RAPIBaiduChat(RAPIBaidu):
 
         ## Parameter "system" error.
         except:
-            _, _, exc, _ = catch_exc()
-            error_code = exc.args[1]["error_code"]
+            _, _, exc_instance, _ = catch_exc()
+            error_code = exc_instance.args[1]["error_code"]
             if error_code == 336104:
                 result = self.chat(
                     text,
@@ -138,7 +138,7 @@ class RAPIBaiduChat(RAPIBaidu):
                 )
                 return result
             else:
-                raise exc
+                raise exc_instance
 
         # Extract.
         response_json: Dict = response.json()
