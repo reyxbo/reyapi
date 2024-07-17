@@ -10,8 +10,8 @@
 
 
 from typing import Dict, Optional
+from reytool.rexception import warn
 from reytool.ros import RFile
-from reytool.rsystem import warn
 from reytool.rtime import wait
 
 from .rbaidu_base import RAPIBaidu
