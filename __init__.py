@@ -16,4 +16,4 @@ baidu : Baidu API methods.
 from typing import Final
 
 
-__version__: Final[str] = "0.35"
+__version__: Final[str] = "0.36"
