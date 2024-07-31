@@ -126,7 +126,7 @@ class RAPIBaiduChat(RAPIBaidu):
 
         ## Parameter "system" error.
         except:
-            _, _, exc_instance, _ = catch_exc()
+            *_, exc_instance, _ = catch_exc()
             error_code = exc_instance.args[1]["error_code"]
             if error_code == 336104:
                 result = self.chat(
