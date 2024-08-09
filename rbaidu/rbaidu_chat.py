@@ -288,31 +288,9 @@ class RAPIBaiduChat(RAPIBaidu):
 
         # Get parameter.
         character = randi(self.characters)
-        pattern = "[\'\"‘’“”]"
-        text_modify = sub(pattern, text)
-        text_modify_len = len(text_modify)
 
         # Modify.
-        text_modify = "%s的润色这句话“%s”" % (character, text_modify)
-        text_modify = self.chat(text_modify)
+        text = "用%s的语气，润色以下这句话\n%s" % (character, text)
+        text_modify = self.chat(text)
 
-        # Extract.
-        pattern = "\'[^\']+\'|\"[^\"]+\"|‘[^‘]+’|“[^“]+”"
-        re_texts = findall(pattern, text_modify)
-        result = None
-        result_len = 0
-        for re_text in re_texts:
-            re_text = re_text[1:-1]
-            re_text_len = len(re_text)
-            if re_text_len < text_modify_len:
-                break
-            if re_text_len > result_len:
-                result = re_text
-                result_len = re_text_len
-        if result is None:
-            if "润色" not in text_modify:
-                result = text_modify
-            else:
-                result = text
-
-        return result
+        return text_modify
