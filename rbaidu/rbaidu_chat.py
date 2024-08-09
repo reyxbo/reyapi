@@ -13,7 +13,6 @@ from typing import Any, List, Dict, Literal, Union, Optional
 from datetime import datetime, timedelta
 from reytool.rexception import catch_exc
 from reytool.rrandom import randi
-from reytool.rregex import findall, sub
 from reytool.rtime import now
 
 from .rbaidu_base import RAPIBaidu
