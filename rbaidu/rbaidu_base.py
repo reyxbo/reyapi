@@ -9,7 +9,7 @@
 """
 
 
-from typing import Any, List, Dict, Literal, Optional
+from typing import Any, List, Dict, TypedDict
 from datetime import datetime
 from requests import Response
 from uuid import uuid1
@@ -20,6 +20,9 @@ from reytool.rtime import now
 __all__ = (
     "RAPIBaidu",
 )
+
+
+CallRecord = TypedDict("CallRecord", {"time": datetime, "data": Any})
 
 
 class RAPIBaidu(object):
@@ -49,7 +52,7 @@ class RAPIBaidu(object):
         self.secret = secret
         self.token_valid_seconds = token_valid_seconds
         self.cuid = uuid1()
-        self.call_records: List[Dict[Literal["time", "data"], Any]] = []
+        self.call_records: List[CallRecord] = []
         self.start_time = now()
 
 

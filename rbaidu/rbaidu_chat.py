@@ -9,7 +9,7 @@
 """
 
 
-from typing import Any, List, Dict, Literal, Union, Optional
+from typing import List, Dict, TypedDict, Literal, Union, Optional
 from datetime import datetime, timedelta
 from reytool.rexception import catch_exc
 from reytool.rrandom import randi
@@ -21,6 +21,10 @@ from .rbaidu_base import RAPIBaidu
 __all__ = (
     "RAPIBaiduChat",
 )
+
+
+ChatRecord = TypedDict("ChatRecord", {"time": datetime, "send": str, "receive": str})
+HistoryMessage = TypedDict("HistoryMessage", {"role": str, "content": str})
 
 
 class RAPIBaiduChat(RAPIBaidu):
@@ -59,7 +63,7 @@ class RAPIBaiduChat(RAPIBaidu):
 
         # Set attribute.
         super().__init__(key, secret)
-        self.chat_records: Dict[str, List[Dict[Literal["time", "send", "receive"], Any]]] = {}
+        self.chat_records: Dict[str, ChatRecord] = {}
         self.character=character
 
 
@@ -106,6 +110,7 @@ class RAPIBaiduChat(RAPIBaidu):
             )
         message = {"role": "user", "content": text}
         messages.append(message)
+        # messages[1]
         json = {"messages": messages}
         if character is None:
             character = self.character
@@ -194,7 +199,7 @@ class RAPIBaiduChat(RAPIBaidu):
         key: str,
         recent_seconds: float,
         max_word: int
-    ) -> List[Dict[Literal["role", "content"], str]]:
+    ) -> List[HistoryMessage]:
         """
         Return history messages.
 
