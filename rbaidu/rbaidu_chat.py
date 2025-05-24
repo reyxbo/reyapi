@@ -110,7 +110,6 @@ class RAPIBaiduChat(RAPIBaidu):
             )
         message = {"role": "user", "content": text}
         messages.append(message)
-        # messages[1]
         json = {"messages": messages}
         if character is None:
             character = self.character
