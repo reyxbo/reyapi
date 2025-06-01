@@ -227,14 +227,14 @@ class RAPIBaiduVoice(RAPIBaidu):
             task_info = self._to_url_query_task(task_id)
 
             # Judge.
-            status = task_info["task_status"]
-            if status == "Running":
-                return False
-            elif status == "Success":
-                store["url"] = task_info["task_result"]["speech_url"]
-                return True
-            else:
-                raise AssertionError("Baidu API text to voice task failed", task_info)
+            match task_info["task_status"]:
+                case "Running":
+                    return False
+                case "Success":
+                    store["url"] = task_info["task_result"]["speech_url"]
+                    return True
+                case _:
+                    raise AssertionError("Baidu API text to voice task failed", task_info)
 
 
         ## Start.

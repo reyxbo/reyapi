@@ -154,14 +154,14 @@ class RAPIBaiduImage(RAPIBaidu):
             task_info = self._to_url_query_task(task_id)
 
             # Judge.
-            status = task_info["task_status"]
-            if status == "RUNNING":
-                return False
-            elif status == "SUCCESS":
-                store["url"] = task_info["sub_task_result_list"][0]["final_image_list"][0]["img_url"]
-                return True
-            else:
-                raise AssertionError("Baidu API text to image task failed")
+            match task_info["task_status"]:
+                case "RUNNING":
+                    return False
+                case "SUCCESS":
+                    store["url"] = task_info["sub_task_result_list"][0]["final_image_list"][0]["img_url"]
+                    return True
+                case _:
+                    raise AssertionError("Baidu API text to image task failed")
 
 
         ## Start.
