@@ -10,15 +10,15 @@
 
 
 from typing import Dict, Optional
-from reytool.rexception import warn
-from reytool.ros import RFile
-from reytool.rtime import wait
+from reykit.rexception import warn
+from reykit.ros import RFile
+from reykit.rtime import wait
 
 from .rbaidu_base import RAPIBaidu
 
 
 __all__ = (
-    "RAPIBaiduVoice",
+    'RAPIBaiduVoice',
 )
 
 
@@ -50,25 +50,25 @@ class RAPIBaiduVoice(RAPIBaidu):
         # Check.
         if len(text) > 60:
             text = text[:60]
-            warn("parameter 'text' length cannot exceed 60")
+            warn('parameter "text" length cannot exceed 60')
 
         # Get parameter.
-        url = "https://tsn.baidu.com/text2audio"
+        url = 'https://tsn.baidu.com/text2audio'
         headers = {
-            "Accept": "*/*",
-            "Content-Type": "application/x-www-form-urlencoded"
+            'Accept': '*/*',
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
         data = {
-            "tok": self.token,
-            "tex": text,
-            "cuid": self.cuid,
-            "ctp": 1,
-            "lan": "zh",
-            "spd": 5,
-            "pit": 5,
-            "vol": 5,
-            "per": 4,
-            "aue": 3
+            'tok': self.token,
+            'tex': text,
+            'cuid': self.cuid,
+            'ctp': 1,
+            'lan': 'zh',
+            'spd': 5,
+            'pit': 5,
+            'vol': 5,
+            'per': 4,
+            'aue': 3
         }
 
         # Request.
@@ -112,21 +112,21 @@ class RAPIBaiduVoice(RAPIBaidu):
         """
 
         # Get parameter.
-        url = "https://aip.baidubce.com/rpc/2.0/tts/v1/create"
-        params = {"access_token": self.token}
+        url = 'https://aip.baidubce.com/rpc/2.0/tts/v1/create'
+        params = {'access_token': self.token}
         headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
         }
         json = {
-            "text": text,
-            "format": "mp3-16k",
-            "voice": 4,
-            "lang": "zh",
-            "speed": 5,
-            "pitch": 5,
-            "volume": 5,
-            "enable_subtitle": 0
+            'text': text,
+            'format': 'mp3-16k',
+            'voice': 4,
+            'lang': 'zh',
+            'speed': 5,
+            'pitch': 5,
+            'volume': 5,
+            'enable_subtitle': 0
         }
 
         # Request.
@@ -142,7 +142,7 @@ class RAPIBaiduVoice(RAPIBaidu):
 
         # Extract.
         response_json: Dict = response.json()
-        task_id: str = response_json["task_id"]
+        task_id: str = response_json['task_id']
 
         return task_id
 
@@ -164,13 +164,13 @@ class RAPIBaiduVoice(RAPIBaidu):
         """
 
         # Get parameter.
-        url = "https://aip.baidubce.com/rpc/2.0/tts/v1/query"
-        params = {"access_token": self.token}
+        url = 'https://aip.baidubce.com/rpc/2.0/tts/v1/query'
+        params = {'access_token': self.token}
         headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
         }
-        json = {"task_ids": [task_id]}
+        json = {'task_ids': [task_id]}
 
         # Request.
         response = self.request(
@@ -182,7 +182,7 @@ class RAPIBaiduVoice(RAPIBaidu):
 
         # Extract.
         response_json: Dict = response.json()
-        task_info: Dict = response_json["tasks_info"][0]
+        task_info: Dict = response_json['tasks_info'][0]
 
         return task_info
 
@@ -227,14 +227,14 @@ class RAPIBaiduVoice(RAPIBaidu):
             task_info = self._to_url_query_task(task_id)
 
             # Judge.
-            match task_info["task_status"]:
-                case "Running":
+            match task_info['task_status']:
+                case 'Running':
                     return False
-                case "Success":
-                    store["url"] = task_info["task_result"]["speech_url"]
+                case 'Success':
+                    store['url'] = task_info['task_result']['speech_url']
                     return True
                 case _:
-                    raise AssertionError("Baidu API text to voice task failed", task_info)
+                    raise AssertionError('Baidu API text to voice task failed', task_info)
 
 
         ## Start.
@@ -245,7 +245,7 @@ class RAPIBaiduVoice(RAPIBaidu):
         )
 
         ## Extract.
-        url = store["url"]
+        url = store['url']
 
         # Save.
         if path is not None:

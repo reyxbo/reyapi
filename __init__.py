@@ -5,7 +5,7 @@
 @Time    : 2023-02-19 18:59:26
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Rey's API method set.
+@Explain : Rey's Web method set.
 
 Modules
 -------
@@ -16,4 +16,4 @@ baidu : Baidu API methods.
 from typing import Final
 
 
-__version__: Final[str] = "0.41"
+__version__: Final[str] = '1.0.0'

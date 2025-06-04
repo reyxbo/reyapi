@@ -10,14 +10,14 @@
 
 
 from typing import Dict, Optional
-from reytool.ros import RFile
-from reytool.rtime import wait
+from reykit.ros import RFile
+from reykit.rtime import wait
 
 from .rbaidu_base import RAPIBaidu
 
 
 __all__ = (
-    "RAPIBaiduImage",
+    'RAPIBaiduImage',
 )
 
 
@@ -44,16 +44,16 @@ class RAPIBaiduImage(RAPIBaidu):
         """
 
         # Get parameter.
-        url = "https://aip.baidubce.com/rpc/2.0/ernievilg/v1/txt2imgv2"
-        params = {"access_token": self.token}
+        url = 'https://aip.baidubce.com/rpc/2.0/ernievilg/v1/txt2imgv2'
+        params = {'access_token': self.token}
         headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
         }
         json = {
-            "prompt": text,
-            "width": 1024,
-            "height": 1024
+            'prompt': text,
+            'width': 1024,
+            'height': 1024
         }
 
         # Request.
@@ -69,7 +69,7 @@ class RAPIBaiduImage(RAPIBaidu):
 
         # Extract.
         response_json: Dict = response.json()
-        task_id: str = response_json["data"]["task_id"]
+        task_id: str = response_json['data']['task_id']
 
         return task_id
 
@@ -91,13 +91,13 @@ class RAPIBaiduImage(RAPIBaidu):
         """
 
         # Get parameter.
-        url = "https://aip.baidubce.com/rpc/2.0/ernievilg/v1/getImgv2"
-        params = {"access_token": self.token}
+        url = 'https://aip.baidubce.com/rpc/2.0/ernievilg/v1/getImgv2'
+        params = {'access_token': self.token}
         headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
         }
-        json = {"task_id": task_id}
+        json = {'task_id': task_id}
 
         # Request.
         response = self.request(
@@ -109,7 +109,7 @@ class RAPIBaiduImage(RAPIBaidu):
 
         # Extract.
         response_json: Dict = response.json()
-        task_info: Dict = response_json["data"]
+        task_info: Dict = response_json['data']
 
         return task_info
 
@@ -154,14 +154,14 @@ class RAPIBaiduImage(RAPIBaidu):
             task_info = self._to_url_query_task(task_id)
 
             # Judge.
-            match task_info["task_status"]:
-                case "RUNNING":
+            match task_info['task_status']:
+                case 'RUNNING':
                     return False
-                case "SUCCESS":
-                    store["url"] = task_info["sub_task_result_list"][0]["final_image_list"][0]["img_url"]
+                case 'SUCCESS':
+                    store['url'] = task_info['sub_task_result_list'][0]['final_image_list'][0]['img_url']
                     return True
                 case _:
-                    raise AssertionError("Baidu API text to image task failed")
+                    raise AssertionError('Baidu API text to image task failed')
 
 
         ## Start.
@@ -172,7 +172,7 @@ class RAPIBaiduImage(RAPIBaidu):
         )
 
         ## Extract.
-        url = store["url"]
+        url = store['url']
 
         # Save.
         if path is not None:

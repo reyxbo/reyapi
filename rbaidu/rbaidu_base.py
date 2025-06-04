@@ -13,16 +13,16 @@ from typing import Any, List, Dict, TypedDict
 from datetime import datetime
 from requests import Response
 from uuid import uuid1
-from reytool.rcomm import request as reytool_request
-from reytool.rtime import now
+from reykit.rcomm import request as reytool_request
+from reykit.rtime import now
 
 
 __all__ = (
-    "RAPIBaidu",
+    'RAPIBaidu',
 )
 
 
-CallRecord = TypedDict("CallRecord", {"time": datetime, "data": Any})
+CallRecord = TypedDict('CallRecord', {'time': datetime, 'data': Any})
 
 
 class RAPIBaidu(object):
@@ -66,23 +66,23 @@ class RAPIBaidu(object):
         """
 
         # Get parameter.
-        url = "https://aip.baidubce.com/oauth/2.0/token"
+        url = 'https://aip.baidubce.com/oauth/2.0/token'
         params = {
-            "grant_type": "client_credentials",
-            "client_id": self.key,
-            "client_secret": self.secret
+            'grant_type': 'client_credentials',
+            'client_id': self.key,
+            'client_secret': self.secret
         }
 
         # Request.
         response = self.request(
             url,
             params,
-            method="post"
+            method='post'
         )
 
         # Extract.
         response_json = response.json()
-        token = response_json["access_token"]
+        token = response_json['access_token']
 
         return token
 
@@ -94,8 +94,8 @@ class RAPIBaidu(object):
         """
 
         # Get parameter.
-        if hasattr(self, "token_time"):
-            token_time: datetime = getattr(self, "token_time")
+        if hasattr(self, 'token_time'):
+            token_time: datetime = getattr(self, 'token_time')
         else:
             token_time = None
         if (
@@ -130,11 +130,11 @@ class RAPIBaidu(object):
         response = reytool_request(*args, **kwargs)
 
         # Check.
-        content_type = response.headers["Content-Type"]
-        if content_type.startswith("application/json"):
+        content_type = response.headers['Content-Type']
+        if content_type.startswith('application/json'):
             response_json: Dict = response.json()
-            if "error_code" in response_json:
-                raise AssertionError("Baidu API request failed", response_json)
+            if 'error_code' in response_json:
+                raise AssertionError('Baidu API request failed', response_json)
 
         return response
 
@@ -153,8 +153,8 @@ class RAPIBaidu(object):
 
         # Get parameter.
         record = {
-            "time": now(),
-            "data": data
+            'time': now(),
+            'data': data
         }
 
         # Record.
@@ -176,7 +176,7 @@ class RAPIBaidu(object):
         if self.call_records == []:
             last_time = self.start_time
         else:
-            last_time: datetime = self.call_records[-1]["time"]
+            last_time: datetime = self.call_records[-1]['time']
 
         # Count.
         now_time = now()
