@@ -40,7 +40,7 @@ class RAPIBaiduVoice(RAPIBaidu):
         ----------
         text : Text, length cannot exceed 60.
         path : File save path.
-            - `None` : Not save.
+            - `None`: Not save.
 
         Returns
         -------
@@ -199,7 +199,7 @@ class RAPIBaiduVoice(RAPIBaidu):
         ----------
         text : Text, length cannot exceed 60.
         path : File save path.
-            - `None` : Not save.
+            - `None`: Not save.
 
         Returns
         -------

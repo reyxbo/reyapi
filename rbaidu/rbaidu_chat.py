@@ -82,10 +82,9 @@ class RAPIBaiduChat(RAPIBaidu):
         ----------
         text : Text.
         Character : Character of language model.
-            - `None` : Use `self.character` attribute.
-            - `str` : Use this value.
-            - `Literal[False]` : Do not set.
-
+            - `None`, Use `self.character`: attribute.
+            - `str`: Use this value.
+            - `Literal[False]`: Do not set.
         Character : Character of language model.
         history_key : Chat history records key.
         history_recent_seconds : Limit recent seconds of chat history.
