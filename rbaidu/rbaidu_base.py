@@ -9,7 +9,7 @@
 """
 
 
-from typing import Any, List, Dict, TypedDict
+from typing import Any, TypedDict
 from datetime import datetime
 from requests import Response
 from uuid import uuid1
@@ -52,7 +52,7 @@ class RAPIBaidu(object):
         self.secret = secret
         self.token_valid_seconds = token_valid_seconds
         self.cuid = uuid1()
-        self.call_records: List[CallRecord] = []
+        self.call_records: list[CallRecord] = []
         self.start_time = now()
 
 
@@ -132,7 +132,7 @@ class RAPIBaidu(object):
         # Check.
         content_type = response.headers['Content-Type']
         if content_type.startswith('application/json'):
-            response_json: Dict = response.json()
+            response_json: dict = response.json()
             if 'error_code' in response_json:
                 raise AssertionError('Baidu API request failed', response_json)
 

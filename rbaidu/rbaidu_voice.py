@@ -9,7 +9,7 @@
 """
 
 
-from typing import Dict, Optional
+from typing import Optional
 from reykit.rexception import warn
 from reykit.ros import RFile
 from reykit.rtime import wait
@@ -141,7 +141,7 @@ class RAPIBaiduVoice(RAPIBaidu):
         self.record_call(text=text)
 
         # Extract.
-        response_json: Dict = response.json()
+        response_json: dict = response.json()
         task_id: str = response_json['task_id']
 
         return task_id
@@ -150,7 +150,7 @@ class RAPIBaiduVoice(RAPIBaidu):
     def _to_url_query_task(
         self,
         task_id: str
-    ) -> Dict:
+    ) -> dict:
         """
         Query task of generate voice URL from text.
 
@@ -181,8 +181,8 @@ class RAPIBaiduVoice(RAPIBaidu):
         )
 
         # Extract.
-        response_json: Dict = response.json()
-        task_info: Dict = response_json['tasks_info'][0]
+        response_json: dict = response.json()
+        task_info: dict = response_json['tasks_info'][0]
 
         return task_info
 

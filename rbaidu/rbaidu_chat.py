@@ -9,7 +9,7 @@
 """
 
 
-from typing import List, Dict, TypedDict, Literal, Union, Optional
+from typing import TypedDict, Literal, Union, Optional
 from datetime import datetime, timedelta
 from reykit.rexception import catch_exc
 from reykit.rrandom import randi
@@ -63,7 +63,7 @@ class RAPIBaiduChat(RAPIBaidu):
 
         # Set attribute.
         super().__init__(key, secret)
-        self.chat_records: Dict[str, ChatRecord] = {}
+        self.chat_records: dict[str, ChatRecord] = {}
         self.character=character
 
 
@@ -144,7 +144,7 @@ class RAPIBaiduChat(RAPIBaidu):
                 raise exc_instance
 
         # Extract.
-        response_json: Dict = response.json()
+        response_json: dict = response.json()
         result: str = response_json['result']
 
         # Record.
@@ -198,7 +198,7 @@ class RAPIBaiduChat(RAPIBaidu):
         key: str,
         recent_seconds: float,
         max_word: int
-    ) -> List[HistoryMessage]:
+    ) -> list[HistoryMessage]:
         """
         Return history messages.
 

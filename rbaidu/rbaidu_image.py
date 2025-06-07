@@ -9,7 +9,7 @@
 """
 
 
-from typing import Dict, Optional
+from typing import Optional
 from reykit.ros import RFile
 from reykit.rtime import wait
 
@@ -68,7 +68,7 @@ class RAPIBaiduImage(RAPIBaidu):
         self.record_call(text=text)
 
         # Extract.
-        response_json: Dict = response.json()
+        response_json: dict = response.json()
         task_id: str = response_json['data']['task_id']
 
         return task_id
@@ -77,7 +77,7 @@ class RAPIBaiduImage(RAPIBaidu):
     def _to_url_query_task(
         self,
         task_id: str
-    ) -> Dict:
+    ) -> dict:
         """
         Query task of generate image URL from text.
 
@@ -108,8 +108,8 @@ class RAPIBaiduImage(RAPIBaidu):
         )
 
         # Extract.
-        response_json: Dict = response.json()
-        task_info: Dict = response_json['data']
+        response_json: dict = response.json()
+        task_info: dict = response_json['data']
 
         return task_info
 
