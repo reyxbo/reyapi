@@ -9,7 +9,6 @@
 """
 
 
-from typing import Optional
 from reykit.rexception import warn
 from reykit.ros import RFile
 from reykit.rtime import wait
@@ -31,7 +30,7 @@ class RAPIBaiduVoice(RAPIBaidu):
     def to_file(
         self,
         text: str,
-        path: Optional[str] = None
+        path: str | None = None
     ) -> bytes:
         """
         Generate voice file from text.
@@ -190,7 +189,7 @@ class RAPIBaiduVoice(RAPIBaidu):
     def to_url(
         self,
         text: str,
-        path: Optional[str] = None
+        path: str | None = None
     ) -> str:
         """
         Generate voice URL from text.

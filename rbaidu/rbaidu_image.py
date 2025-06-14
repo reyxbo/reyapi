@@ -9,7 +9,6 @@
 """
 
 
-from typing import Optional
 from reykit.ros import RFile
 from reykit.rtime import wait
 
@@ -117,7 +116,7 @@ class RAPIBaiduImage(RAPIBaidu):
     def to_url(
         self,
         text: str,
-        path: Optional[str] = None
+        path: str | None = None
     ) -> str:
         """
         Generate image URL from text.

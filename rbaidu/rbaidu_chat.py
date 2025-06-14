@@ -9,7 +9,7 @@
 """
 
 
-from typing import TypedDict, Literal, Union, Optional
+from typing import TypedDict, Literal
 from datetime import datetime, timedelta
 from reykit.rexception import catch_exc
 from reykit.rrandom import randi
@@ -49,7 +49,7 @@ class RAPIBaiduChat(RAPIBaidu):
         self,
         key: str,
         secret: str,
-        character: Optional[str] = None
+        character: str | None = None
     ) -> None:
         """
         Build `Baidu API chat` attributes.
@@ -70,8 +70,8 @@ class RAPIBaiduChat(RAPIBaidu):
     def chat(
         self,
         text: str,
-        character: Optional[Union[str, Literal[False]]] = None,
-        history_key: Optional[str] = None,
+        character: str | Literal[False] | None = None,
+        history_key: str | None = None,
         history_recent_seconds: float = 1800,
         history_max_word: int = 400
     ) -> bytes:
