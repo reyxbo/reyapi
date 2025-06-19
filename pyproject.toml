@@ -1,0 +1,21 @@
+[project]
+name = "reyweb"
+version = "1.0.2"
+description = "Rey's Web method set."
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+keywords = ["rey", "reyxbo", "web", "api"]
+authors = [
+    {name = "Rey", email = "reyxbo@163.com"}
+]
+dependencies = [
+    "reykit"
+]
+
+[project.urls]
+homepage = "https://github.com/reyxbo/reyweb/"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
