@@ -141,7 +141,7 @@ class RAPIBaiduChat(RAPIBaidu):
                 )
                 return result
             else:
-                raise exc_instance
+                raise
 
         # Extract.
         response_json: dict = response.json()
