@@ -15,6 +15,7 @@ from requests import Response
 from uuid import uuid1
 from reykit.rcomm import request as reytool_request
 from reykit.rtime import now
+from reykit.rtype import RBase
 
 
 __all__ = (
@@ -25,7 +26,7 @@ __all__ = (
 CallRecord = TypedDict('CallRecord', {'time': datetime, 'data': Any})
 
 
-class RAPIBaidu(object):
+class RAPIBaidu(RBase):
     """
     Rey's `Baidu API` type.
     """
