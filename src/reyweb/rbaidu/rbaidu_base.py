@@ -39,7 +39,7 @@ class RAPIBaidu(RBase):
         token_valid_seconds: float = 43200
     ) -> None:
         """
-        Build `Baidu API` attributes.
+        Build `Baidu API` instance attributes.
 
         Parameters
         ----------

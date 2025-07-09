@@ -52,7 +52,7 @@ class RAPIBaiduChat(RAPIBaidu):
         character: str | None = None
     ) -> None:
         """
-        Build `Baidu API chat` attributes.
+        Build `Baidu API chat` instance attributes.
 
         Parameters
         ----------
