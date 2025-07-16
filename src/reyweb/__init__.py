@@ -9,5 +9,6 @@
 
 Modules
 -------
-baidu : Baidu API methods.
+rall : All methods.
+rext : External API methods.
 """
