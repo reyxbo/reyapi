@@ -15,17 +15,19 @@ from requests import Response
 from uuid import uuid1
 from reykit.rexc import warn, catch_exc
 from reykit.rnet import request as reytool_request
-from reykit.ros import RFile
+from reykit.ros import File
 from reykit.rrand import randi
 from reykit.rtime import now, wait
-from reykit.rtype import RBase
+from reykit.rtype import Base
+
+from ..rtype import API
 
 
 __all__ = (
-    'RAPIBaidu',
-    'RAPIBaiduChat',
-    'RAPIBaiduImage',
-    'RAPIBaiduVoice'
+    'APIBaidu',
+    'APIBaiduChat',
+    'APIBaiduImage',
+    'APIBaiduVoice'
 )
 
 
@@ -34,9 +36,9 @@ ChatRecord = TypedDict('ChatRecord', {'time': datetime, 'send': str, 'receive': 
 HistoryMessage = TypedDict('HistoryMessage', {'role': str, 'content': str})
 
 
-class RAPIBaidu(RBase):
+class APIBaidu(API):
     """
-    Rey's `Baidu API` type.
+    Baidu API type.
     """
 
 
@@ -47,7 +49,7 @@ class RAPIBaidu(RBase):
         token_valid_seconds: float = 43200
     ) -> None:
         """
-        Build `Baidu API` instance attributes.
+        Build instance attributes.
 
         Parameters
         ----------
@@ -195,9 +197,9 @@ class RAPIBaidu(RBase):
         return interval_seconds
 
 
-class RAPIBaiduChat(RAPIBaidu):
+class APIBaiduChat(APIBaidu):
     """
-    Rey's `Baidu API chat` type.
+    Baidu API chat type.
     """
 
     # Character.
@@ -220,7 +222,7 @@ class RAPIBaiduChat(RAPIBaidu):
         character: str | None = None
     ) -> None:
         """
-        Build `Baidu API chat` instance attributes.
+        Build instance attributes.
 
         Parameters
         ----------
@@ -467,9 +469,9 @@ class RAPIBaiduChat(RAPIBaidu):
         return text_modify
 
 
-class RAPIBaiduImage(RAPIBaidu):
+class APIBaiduImage(APIBaidu):
     """
-    Rey's `Baidu API image` type.
+    Baidu API image type.
     """
 
 
@@ -623,15 +625,15 @@ class RAPIBaiduImage(RAPIBaidu):
         # Save.
         if path is not None:
             response = self.request(url)
-            rfile = RFile(path)
+            rfile = File(path)
             rfile.write(response.content)
 
         return url
 
 
-class RAPIBaiduVoice(RAPIBaidu):
+class APIBaiduVoice(APIBaidu):
     """
-    Rey's `Baidu API voice` type.
+    Baidu API voice type.
     """
 
 
@@ -696,7 +698,7 @@ class RAPIBaiduVoice(RAPIBaidu):
 
         # Save.
         if path is not None:
-            rfile = RFile(path)
+            rfile = File(path)
             rfile.write(file_bytes)
 
         return file_bytes
@@ -857,7 +859,7 @@ class RAPIBaiduVoice(RAPIBaidu):
         # Save.
         if path is not None:
             response = self.request(url)
-            rfile = RFile(path)
+            rfile = File(path)
             rfile.write(response.content)
 
         return url

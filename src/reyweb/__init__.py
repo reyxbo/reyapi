@@ -10,5 +10,6 @@
 Modules
 -------
 rall : All methods.
-rext : External API methods.
+rapi : External API methods.
+rtype : Type methods.
 """
