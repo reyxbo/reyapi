@@ -1,7 +1,7 @@
 [project]
 name = "reyweb"
-version = "1.0.8"
-description = "Rey's Web method set."
+version = "1.0.9"
+description = "Web method set."
 readme = "README.md"
 requires-python = ">=3.12"
 license = {file = "LICENSE"}
