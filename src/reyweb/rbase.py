@@ -5,20 +5,26 @@
 @Time    : 2025-07-17 22:32:37
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Type methods.
+@Explain : Base methods.
 """
 
 
-from reykit.rtype import Base
+from reykit.rbase import Base
 
 
-class Web(Base):
+__all__ = (
+    'BaseWeb',
+    'API'
+)
+
+
+class BaseWeb(Base):
     """
-    Web type.
+    Web base type.
     """
 
 
-class API(Web):
+class API(BaseWeb):
     """
     External API type.
     """

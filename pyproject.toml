@@ -1,6 +1,6 @@
 [project]
 name = "reyweb"
-version = "1.0.7"
+version = "1.0.8"
 description = "Rey's Web method set."
 readme = "README.md"
 requires-python = ">=3.12"

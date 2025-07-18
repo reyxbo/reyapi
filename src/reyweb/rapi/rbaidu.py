@@ -13,14 +13,13 @@ from typing import Any, TypedDict, Literal
 from datetime import datetime, timedelta
 from requests import Response
 from uuid import uuid1
-from reykit.rexc import warn, catch_exc
+from reykit.rbase import Base, warn, catch_exc
 from reykit.rnet import request as reytool_request
 from reykit.ros import File
 from reykit.rrand import randi
 from reykit.rtime import now, wait
-from reykit.rtype import Base
 
-from ..rtype import API
+from ..rbase import API
 
 
 __all__ = (
