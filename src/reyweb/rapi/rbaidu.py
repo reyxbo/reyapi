@@ -259,6 +259,9 @@ class APIBaiduFanyi(APIBaidu):
         return trans_text
 
 
+    __call__ = translate
+
+
 class APIBaiduQianfan(APIBaidu):
     """
     Baidu Qianfan API type.
@@ -467,7 +470,7 @@ class APIBaiduQianfanChat(APIBaiduQianfan):
         history_key: str | None = None,
         history_recent_seconds: float = 1800,
         history_max_word: int = 400
-    ) -> bytes:
+    ) -> str:
         """
         Chat with language model.
 
@@ -692,6 +695,9 @@ class APIBaiduQianfanChat(APIBaiduQianfan):
         return text_modify
 
 
+    __call__ = chat
+
+
 class APIBaiduQianfanImage(APIBaiduQianfan):
     """
     Baidu Qianfan API image type.
@@ -852,6 +858,9 @@ class APIBaiduQianfanImage(APIBaiduQianfan):
             rfile.write(response.content)
 
         return url
+
+
+    __call__ = to_url
 
 
 class APIBaiduQianfanVoice(APIBaiduQianfan):
@@ -1086,3 +1095,6 @@ class APIBaiduQianfanVoice(APIBaiduQianfan):
             rfile.write(response.content)
 
         return url
+
+
+    __call__ = to_url
