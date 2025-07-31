@@ -9,7 +9,8 @@
 """
 
 
-from typing import Any, TypedDict, Literal
+from typing import Any, TypedDict, NotRequired, Literal, Hashable, overload
+from collections.abc import Iterable
 from enum import StrEnum
 from datetime import datetime, timedelta
 from requests import Response
@@ -37,6 +38,19 @@ __all__ = (
 
 FanyiResponseResult = TypedDict('FanyiResponseResult', {'src': str, 'dst': str})
 FanyiResponse = TypedDict('FanyiResponse', {'from': str, 'to': str, 'trans_result': list[FanyiResponseResult]})
+
+# Key 'role' value 'system' only in first.
+# Key 'role' value 'user' and 'assistant' can mix.
+# Key 'name' is distinguish users.
+ModelName = str
+ModelNames = list[ModelName]
+_ChatRecord = TypedDict('ChatRecords', {'role': Literal['system', 'user', 'assistant'], 'content': str, 'name': NotRequired[str]})
+ChatRecords = list[_ChatRecord]
+ChatRecordsIndex = Hashable
+ChatRecordsData = dict[ChatRecordsIndex, ChatRecords]
+ChatResponseWebItem = TypedDict('ChatResponseWebItem', {'index': int, 'url': str, 'title': str})
+ChatResponseWeb = list[ChatResponseWebItem]
+
 CallRecord = TypedDict('CallRecord', {'time': datetime, 'data': Any})
 ChatRecord = TypedDict('ChatRecord', {'time': datetime, 'send': str, 'receive': str})
 HistoryMessage = TypedDict('HistoryMessage', {'role': str, 'content': str})
@@ -97,8 +111,9 @@ class APIBaiduFanyi(APIBaidu):
     API description: https://fanyi-api.baidu.com/product/113.
     """
 
-
     url = 'http://api.fanyi.baidu.com/api/trans/vip/translate'
+    LangEnum = APIBaiduFanyiLangEnum
+    LangAutoEnum = APIBaiduFanyiLangAutoEnum
 
 
     def __init__(
@@ -423,6 +438,276 @@ class APIBaiduQianfan(APIBaidu):
         return interval_seconds
 
 
+class _APIBaiduQianfan(APIBaidu):
+    """
+    Baidu Qianfan API type.
+    """
+
+    # API URL.
+    url: str
+
+
+    def __init__(
+        self,
+        key: str,
+        model: ModelName
+    ) -> None:
+        """
+        Build instance attributes.
+
+        Parameters
+        ----------
+        key : API key.
+        model : Model name, can get model name list from `self.models`.
+        """
+
+        # Build.
+        self.key = key
+        self.model = model
+        self.auth = 'Bearer ' + key
+
+
+    def request(self, json: dict) -> dict | Iterable[str]:
+        """
+        Request API.
+
+        Parameters
+        ----------
+        json : Request body.
+
+        Returns
+        -------
+        Response json or iterable.
+            - `Contain key 'stream' value True`: Return `Iterable[bytes]`.
+        """
+
+        # Get parameter.
+        json['model'] = self.model
+        rand: int | None = getattr(self, 'rand', None)
+        if rand is not None:
+            json['temperature'] = rand
+        stream: bool = json.get('stream', False)
+        headers = {'Authorization': self.auth, 'Content-Type': 'application/json'}
+
+        # Request.
+        response = reykit_request(
+            self.url,
+            json=json,
+            headers=headers,
+            stream=stream,
+            check=True
+        )
+
+        # Stream.
+        if stream:
+            iterable: Iterable[str] = response.iter_lines()
+            return iterable
+
+        # Check.
+        content_type = response.headers['Content-Type']
+        if content_type.startswith('application/json'):
+            response_json: dict = response.json()
+            if 'code' in response_json:
+                throw(AssertionError, response_json)
+        else:
+            throw(AssertionError, content_type)
+
+        return response_json
+
+
+    @property
+    def models(self) -> ModelNames:
+        """
+        Get model name list.
+
+        Returns
+        -------
+        Model name list.
+        """
+
+        # Get parameter.
+        url = 'https://qianfan.baidubce.com/v2/models'
+        headers = {'Authorization': self.auth, 'Content-Type': 'application/json'}
+
+        # Request.
+        response = reykit_request(url, headers=headers, check=True)
+
+        # Check.
+        content_type = response.headers['Content-Type']
+        if content_type.startswith('application/json'):
+            response_json: dict = response.json()
+            if 'code' in response_json:
+                throw(AssertionError, response_json)
+        else:
+            throw(AssertionError, content_type)
+
+        # Extract.
+        result = [
+            row['id']
+            for row in response_json['data']
+        ]
+
+        return result
+
+
+class _APIBaiduQianfanChat(_APIBaiduQianfan):
+    """
+    Baidu Qianfan chat API type.
+    """
+
+    url = 'https://qianfan.baidubce.com/v2/chat/completions'
+
+
+    def __init__(
+        self,
+        key: str,
+        role: str | None = None,
+        name: str | None = None,
+        model: ModelName = 'ernie-4.5-turbo-32k',
+        rand: float = 1
+    ) -> None:
+        """
+        Build instance attributes.
+
+        Parameters
+        ----------
+        key : API key.
+        role : AI role description.
+        name : AI role name.
+        model : Model name, can get model name list from `self.models`.
+        rand : Randomness, value range is `[0,2]`.
+        """
+
+        # Build.
+        super().__init__(key, model)
+        self.role = role
+        self.name = name
+        self.rand = rand
+        self.data: ChatRecordsData = {}
+
+
+    @overload
+    def chat(
+        self,
+        text: str,
+        name: str | None = None,
+        index: ChatRecordsIndex | None = None
+    ) -> str: ...
+
+    @overload
+    def chat(
+        self,
+        text: str,
+        name: str | None = None,
+        index: ChatRecordsIndex | None = None,
+        *,
+        web: Literal[True]
+    ) -> tuple[str, ChatResponseWeb]: ...
+
+    @overload
+    def chat(
+        self,
+        text: str,
+        name: str | None = None,
+        index: ChatRecordsIndex | None = None,
+        web: bool = False,
+        *,
+        stream: Literal[True]
+    ) -> Iterable[str]: ...
+
+    def chat(
+        self,
+        text: str,
+        name: str | None = None,
+        index: ChatRecordsIndex | None = None,
+        web: bool = False,
+        stream: bool = False
+    ) -> str | tuple[str, ChatResponseWeb] | Iterable[str]:
+        """
+        Chat with AI.
+
+        Parameters
+        ----------
+        text : User chat text.
+        name : User name.
+        index : Chat records index.
+            `None`: Not use record.
+        web : Whether use web search.
+        think : Whether use deep think.
+        stream : Whether use stream response.
+            - `Literal[True]`: Will not update records, need manual update.
+
+        Returns
+        -------
+        Response content.
+        """
+
+        # Get parameter.
+        chat_records_update = []
+
+        ## Record.
+        if index is not None:
+            chat_records: ChatRecords = self.data.setdefault(index, [])
+        else:
+            chat_records: ChatRecords = []
+
+        ## New.
+        chat_record_role = None
+        if (
+            chat_records == []
+            and self.role is not None
+        ):
+            chat_record_role = {'role': 'system', 'content': self.role}
+            if self.name is not None:
+                chat_record_role['name'] = self.name
+            chat_records_update.append(chat_record_role)
+
+        ## Now.
+        chat_record_now = {'role': 'user', 'content': text}
+        if name is not None:
+            chat_record_now['name'] = name
+        chat_records_update.append(chat_record_now)
+
+        chat_record_role = [chat_record_role]
+        json = {'messages': [*chat_records, *chat_records_update]}
+        if web:
+            json['web_search'] = {
+                'enable': True,
+                'enable_citation': True,
+                'enable_trace': True
+            }
+        if stream:
+            json['stream'] = True
+
+        # Request.
+        response = self.request(json)
+
+        # Return.
+
+        ## Stream.
+        if stream:
+            response_iter: Iterable[str] = response
+            return response_iter
+
+        response_json: dict = response
+        response_content: str = response_json['choices'][0]['message']['content']
+
+        ## Record.
+        if index is not None:
+            chat_records_reply = {'role': 'assistant', 'content': response_content}
+            if self.name is not None:
+                chat_records_reply['name'] = self.name
+            chat_records_update.append(chat_records_reply)
+            chat_records.extend(chat_records_update)
+
+        ## Web.
+        if web:
+            response_web: ChatResponseWeb = response_json.get('search_results', [])
+            return response_content, response_web
+
+        return response_content
+
+
 class APIBaiduQianfanChat(APIBaiduQianfan):
     """
     Baidu Qianfan API chat type.
@@ -432,9 +717,9 @@ class APIBaiduQianfanChat(APIBaiduQianfan):
     characters = (
         '善良', '淳厚', '淳朴', '豁达', '开朗', '体贴', '活跃', '慈祥', '仁慈', '温和',
         '温存', '和蔼', '和气', '直爽', '耿直', '憨直', '敦厚', '正直', '爽直', '率直',
-        '刚直', '正派', '刚正', '纯正', '廉政', '清廉', '自信', '信心', '新年', '相信',
+        '刚直', '正派', '刚正', '纯正', '自信', '信心',
         '老实', '谦恭', '谦虚', '谦逊', '自谦', '谦和', '坚强', '顽强', '建议', '刚毅',
-        '刚强', '倔强', '强悍', '刚毅', '减震', '坚定', '坚韧', '坚决', '坚忍', '勇敢',
+        '刚强', '倔强', '强悍', '刚毅', '坚定', '坚韧', '坚决', '坚忍', '勇敢',
         '勇猛', '勤劳', '勤恳', '勤奋', '勤勉', '勤快', '勤俭', '辛勤', '刻苦', '节约',
         '狂妄', '骄横', '骄纵', '窘态', '窘迫', '困窘', '难堪', '害羞', '羞涩', '赧然',
         '无语', '羞赧'
@@ -704,7 +989,7 @@ class APIBaiduQianfanImage(APIBaiduQianfan):
     """
 
 
-    def _to_url_create_task(
+    def __to_url_create_task(
         self,
         text: str
     ) -> str:
@@ -751,7 +1036,7 @@ class APIBaiduQianfanImage(APIBaiduQianfan):
         return task_id
 
 
-    def _to_url_query_task(
+    def __to_url_query_task(
         self,
         task_id: str
     ) -> dict:
@@ -811,7 +1096,7 @@ class APIBaiduQianfanImage(APIBaiduQianfan):
         """
 
         # Create.
-        task_id = self._to_url_create_task(text)
+        task_id = self.__to_url_create_task(text)
 
         # Wait.
         store = {}
@@ -828,7 +1113,7 @@ class APIBaiduQianfanImage(APIBaiduQianfan):
             """
 
             # Query.
-            task_info = self._to_url_query_task(task_id)
+            task_info = self.__to_url_query_task(task_id)
 
             # Judge.
             match task_info['task_status']:
@@ -936,7 +1221,7 @@ class APIBaiduQianfanVoice(APIBaiduQianfan):
         return file_bytes
 
 
-    def _to_url_create_task(
+    def __to_url_create_task(
         self,
         text: str
     ) -> str:
@@ -988,7 +1273,7 @@ class APIBaiduQianfanVoice(APIBaiduQianfan):
         return task_id
 
 
-    def _to_url_query_task(
+    def __to_url_query_task(
         self,
         task_id: str
     ) -> dict:
@@ -1048,7 +1333,7 @@ class APIBaiduQianfanVoice(APIBaiduQianfan):
         """
 
         # Create.
-        task_id = self._to_url_create_task(text)
+        task_id = self.__to_url_create_task(text)
 
         # Wait.
         store = {}
@@ -1065,7 +1350,7 @@ class APIBaiduQianfanVoice(APIBaiduQianfan):
             """
 
             # Query.
-            task_info = self._to_url_query_task(task_id)
+            task_info = self.__to_url_query_task(task_id)
 
             # Judge.
             match task_info['task_status']:
