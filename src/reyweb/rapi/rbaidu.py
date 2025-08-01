@@ -10,11 +10,12 @@
 
 
 from typing import Any, TypedDict, NotRequired, Literal, Hashable, overload
-from collections.abc import Iterable
+from collections.abc import Iterable, Generator
 from enum import StrEnum
 from datetime import datetime, timedelta
 from requests import Response
 from uuid import uuid1
+from json import loads as json_loads
 from reykit.rbase import throw, warn, catch_exc
 from reykit.rnet import request as reykit_request
 from reykit.ros import File, get_md5
@@ -500,7 +501,7 @@ class _APIBaiduQianfan(APIBaidu):
 
         # Stream.
         if stream:
-            iterable: Iterable[str] = response.iter_lines()
+            iterable: Iterable[str] = response.iter_lines(decode_unicode=True)
             return iterable
 
         # Check.
@@ -610,10 +611,20 @@ class _APIBaiduQianfanChat(_APIBaiduQianfan):
         text: str,
         name: str | None = None,
         index: ChatRecordsIndex | None = None,
-        web: bool = False,
         *,
         stream: Literal[True]
     ) -> Iterable[str]: ...
+
+    @overload
+    def chat(
+        self,
+        text: str,
+        name: str | None = None,
+        index: ChatRecordsIndex | None = None,
+        *,
+        web: Literal[True],
+        stream: Literal[True]
+    ) -> tuple[Iterable[str], ChatResponseWeb]: ...
 
     def chat(
         self,
@@ -622,7 +633,7 @@ class _APIBaiduQianfanChat(_APIBaiduQianfan):
         index: ChatRecordsIndex | None = None,
         web: bool = False,
         stream: bool = False
-    ) -> str | tuple[str, ChatResponseWeb] | Iterable[str]:
+    ) -> str | tuple[str, ChatResponseWeb] | Iterable[str] | tuple[Iterable[str], ChatResponseWeb]:
         """
         Chat with AI.
 
@@ -687,25 +698,64 @@ class _APIBaiduQianfanChat(_APIBaiduQianfan):
         ## Stream.
         if stream:
             response_iter: Iterable[str] = response
-            return response_iter
+            response_line_first: str = next(response_iter)
+            response_line_first = response_line_first[6:]
+            response_json_first: dict = json_loads(response_line_first)
+            response_web: ChatResponseWeb = response_json_first.get('search_results', [])
+            response_content_first: str = response_json_first['choices'][0]['delta']['content']
 
-        response_json: dict = response
-        response_content: str = response_json['choices'][0]['message']['content']
 
-        ## Record.
-        if index is not None:
-            chat_records_reply = {'role': 'assistant', 'content': response_content}
-            if self.name is not None:
-                chat_records_reply['name'] = self.name
-            chat_records_update.append(chat_records_reply)
-            chat_records.extend(chat_records_update)
+            ### Defin.
+            def _generator() -> Generator[str, Any, None]:
+                """
+                Generator function.
 
-        ## Web.
-        if web:
-            response_web: ChatResponseWeb = response_json.get('search_results', [])
-            return response_content, response_web
+                Returns
+                -------
+                Generator
+                """
 
-        return response_content
+                # First.
+                yield response_content_first
+
+                # Next.
+                for response_line in response_iter:
+                    if response_line == '':
+                        continue
+                    elif response_line == 'data: [DONE]':
+                        break
+                    response_line = response_line[6:]
+                    response_json: dict = json_loads(response_line)
+                    response_content: str = response_json['choices'][0]['delta']['content']
+                    yield response_content
+
+
+            ### Web.
+            generator = _generator()
+            if web:
+                return generator, response_web
+
+            return generator
+
+        ## Not Stream.
+        else:
+            response_json: dict = response
+            response_content: str = response_json['choices'][0]['message']['content']
+
+            ### Record.
+            if index is not None:
+                chat_records_reply = {'role': 'assistant', 'content': response_content}
+                if self.name is not None:
+                    chat_records_reply['name'] = self.name
+                chat_records_update.append(chat_records_reply)
+                chat_records.extend(chat_records_update)
+
+            ### Web.
+            if web:
+                response_web: ChatResponseWeb = response_json.get('search_results', [])
+                return response_content, response_web
+
+            return response_content
 
 
 class APIBaiduQianfanChat(APIBaiduQianfan):
