@@ -73,8 +73,12 @@ class APILikeOpenAI(API):
         key : API key.
         role : AI role description.
         name : AI role name.
-        rand : Randomness, value range is `[0,2]`.
+        rand : Randomness, value range is `[0,2)`.
         """
+
+        # Check.
+        if not 0 <= rand < 2:
+            throw(AssertionError, rand)
 
         # Build.
         self.key = key
