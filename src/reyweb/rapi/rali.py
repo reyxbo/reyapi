@@ -9,7 +9,7 @@
 """
 
 
-from ..rbase import API, APILikeOpenAI, ChatRecordUsage, ChatResponseWeb, ChatRecords
+from .rbase import API, APILikeOpenAI, ChatRecordUsage, ChatResponseWeb, ChatRecords
 
 
 __all__ = (

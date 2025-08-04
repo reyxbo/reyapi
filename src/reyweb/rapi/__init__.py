@@ -13,5 +13,6 @@ rbaidu : Baidu API methods.
 """
 
 
+from .rbase import *
 from .rali import *
 from .rbaidu import *

@@ -16,7 +16,7 @@ from reykit.rnet import request as reykit_request
 from reykit.ros import get_md5
 from reykit.rrand import randn
 
-from ..rbase import API, APILikeOpenAI, ChatRecordUsage, ChatResponseWeb, ChatRecords
+from .rbase import API, APILikeOpenAI, ChatRecordUsage, ChatResponseWeb, ChatRecords
 
 
 __all__ = (
