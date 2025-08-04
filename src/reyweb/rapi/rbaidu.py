@@ -16,15 +16,14 @@ from reykit.rnet import request as reykit_request
 from reykit.ros import get_md5
 from reykit.rrand import randn
 
-from .rbase import API, APILikeOpenAI, ChatRecordUsage, ChatResponseWeb, ChatRecords
+from ..rbase import API
 
 
 __all__ = (
     'APIBaidu',
     'APIBaiduFanyiLangEnum',
     'APIBaiduFanyiLangAutoEnum',
-    'APIBaiduFanyi',
-    'APIBaiduErnie'
+    'APIBaiduFanyi'
 )
 
 
@@ -252,148 +251,3 @@ class APIBaiduFanyi(APIBaidu):
 
 
     __call__ = translate
-
-
-class APIBaiduErnie(APIBaidu, APILikeOpenAI):
-    """
-    Baidu ernie API type.
-    """
-
-    url_api = 'https://qianfan.baidubce.com/v2/chat/completions'
-    url_document = 'https://cloud.baidu.com/doc/qianfan-api/s/3m7of64lb'
-    model = 'ernie-4.5-turbo-32k'
-
-
-    def add_json_message(self, json: dict, records: ChatRecords) -> None:
-        """
-        Add messages parameter to request json.
-
-        Parameters
-        ----------
-        json : Request JSON.
-        records : Chat records.
-        """
-
-        # Handle parameter.
-        records = [
-            {
-                'role': record['role'],
-                **(
-                    {}
-                    if record['name'] is None
-                    else {'name': record['name']}
-                ),
-                'content': record['content']
-            }
-            for record in records
-        ]
-
-        # Add.
-        json['messages'] = records
-
-
-    def add_json_web(self, json: dict) -> None:
-        """
-        Add web parameter to request json.
-
-        Parameters
-        ----------
-        json : Request JSON.
-        """
-
-        # Add.
-        json['web_search'] = {
-            'enable': True,
-            'enable_citation': True,
-            'enable_trace': True,
-            'enable_status': False
-        }
-
-
-    def handle_request(self, headers: dict, json: dict) -> None:
-        """
-        Handle request headers and json.
-
-        Parameters
-        ----------
-        headers : Request headers.
-        json : Request JOSN.
-        """
-
-        # Handle.
-        if json.get('stream'):
-            json['stream_options'] = {'include_usage': True}
-
-
-    def extrac_response_reply(self, response_json: dict) -> str:
-        """
-        Extrac reply text from response JSON.
-
-        Parameters
-        ----------
-        response_json : Response JSON.
-
-        Returns
-        -------
-        Reply text.
-        """
-
-        # Extrac.
-        response_choice: dict = response_json['choices'][0]
-        if 'message' in response_choice:
-            response_reply: str = response_choice['message']['content']
-        elif 'delta' in response_choice:
-            response_reply: str = response_choice['delta']['content']
-        else:
-            throw(AssertionError, response_choice)
-
-        return response_reply
-
-
-    def extrac_response_web(self, response_json: dict) -> ChatResponseWeb | None:
-        """
-        Extrac web data from response JSON.
-
-        Parameters
-        ----------
-        response_json : Response JSON.
-
-        Returns
-        -------
-        Web data.
-        """
-
-        # Extrac.
-        web_data: list[dict] = response_json.get('search_results', [])
-        for item in web_data:
-            item['site'] = None
-            item['icon'] = None
-        if web_data == []:
-            web_data = None
-
-        return web_data
-
-
-    def extrac_response_usage(self, response_json: dict) -> ChatRecordUsage | None:
-        """
-        Extrac usage token data from response JSON.
-
-        Parameters
-        ----------
-        response_json : Response JSON.
-
-        Returns
-        -------
-        Usage token data.
-        """
-
-        # Extrac.
-        usage_data: dict | None = response_json.get('usage')
-        if usage_data is not None:
-            usage_data = {
-                'input': usage_data['prompt_tokens'],
-                'output': usage_data['completion_tokens'],
-                'total': usage_data['total_tokens']
-            }
-
-        return usage_data
