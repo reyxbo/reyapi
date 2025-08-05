@@ -55,7 +55,7 @@ class APIAliQwen(APIAli):
 
     url_api = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
     url_document = 'https://help.aliyun.com/zh/model-studio/use-qwen-by-calling-api?spm=a2c4g.11186623.0.0.330e7d9dSBCaZQ'
-    model = 'qwen-turbo'
+    model = 'qwen-turbo-latest'
 
 
     def __init__(
