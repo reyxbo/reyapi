@@ -524,3 +524,24 @@ class APIAliQwen(APIAli):
                 return chat_records_reply, generator_text
         else:
             return chat_records_reply
+
+
+    def modify(self, text: str) -> str:
+        """
+        Let AI modify text.
+
+        Parameters
+        ----------
+        text : Text.
+
+        Returns
+        -------
+        Modified text.
+        """
+
+        # Get parameter.
+        text = '润色冒号后的内容（注意！只返回润色后的内容正文，之后会直接作为正式消息发送出去！）：\n' + text
+        record = self.chat(text)
+        result: str = record['content']
+
+        return result
