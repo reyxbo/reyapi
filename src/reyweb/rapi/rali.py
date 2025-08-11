@@ -545,3 +545,6 @@ class APIAliQwen(APIAli):
         result: str = record['content']
 
         return result
+
+
+    __call__ = chat
