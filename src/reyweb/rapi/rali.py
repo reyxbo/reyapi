@@ -540,9 +540,10 @@ class APIAliQwen(APIAli):
         """
 
         # Get parameter.
-        text = '润色冒号后的内容（注意！只返回润色后的内容正文，之后会直接作为正式消息发送出去！）：\n' + text
+        text = '润色冒号后的内容（注意！只返回润色后的内容正文，之后会直接整段使用）：' + text
         record = self.chat(text)
         result: str = record['content']
+        result = result.strip()
 
         return result
 
