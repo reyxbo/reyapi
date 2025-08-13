@@ -14,6 +14,7 @@ from collections.abc import Iterable, Generator
 from json import loads as json_loads
 from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
+from reykit.rtime import now
 
 from ..rbase import API
 
@@ -33,7 +34,15 @@ ChatResponseWebItem = TypedDict('ChatResponseWebItem', {'site': str | None, 'ico
 type ChatResponseWeb = list[ChatResponseWebItem]
 ChatRecord = TypedDict(
     'ChatRecord',
-    {'role': ChatRecordRole, 'name': str | None, 'content': str | None, 'usage': ChatRecordUsage | None, 'web': ChatResponseWeb | None, 'think': str | None}
+    {
+        'time': int,
+        'role': ChatRecordRole,
+        'name': str | None,
+        'content': str | None,
+        'usage': ChatRecordUsage | None,
+        'web': ChatResponseWeb | None,
+        'think': str | None
+    }
 )
 type ChatRecords = list[ChatRecord]
 type ChatRecordsIndex = Hashable
@@ -262,7 +271,7 @@ class APIAliQwen(APIAli):
         response_usage = self.extract_response_usage(response_json)
         response_web = self.extract_response_web(response_json)
         response_think = self.extract_response_think(response_json)
-        chat_records_reply = {'role': 'assistant', 'content': response_text, 'name': self.name, 'usage': response_usage, 'web': response_web, 'think': response_think}
+        chat_records_reply = {'time': now('timestamp'), 'role': 'assistant', 'content': response_text, 'name': self.name, 'usage': response_usage, 'web': response_web, 'think': response_think}
 
         return chat_records_reply
 
@@ -457,11 +466,11 @@ class APIAliQwen(APIAli):
             chat_records == []
             and self.role is not None
         ):
-            chat_record_role = {'role': 'system', 'name': self.name, 'content': self.role, 'usage': None, 'web': None, 'think': None}
+            chat_record_role = {'time': now('timestamp'), 'role': 'system', 'name': self.name, 'content': self.role, 'usage': None, 'web': None, 'think': None}
             chat_records_update.append(chat_record_role)
 
         ### Now.
-        chat_record_now = {'role': 'user', 'name': name, 'content': text, 'usage': None, 'web': None, 'think': None}
+        chat_record_now = {'time': now('timestamp'), 'role': 'user', 'name': name, 'content': text, 'usage': None, 'web': None, 'think': None}
         chat_records_update.append(chat_record_now)
 
         messages: ChatRecords = chat_records + chat_records_update
