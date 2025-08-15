@@ -118,7 +118,7 @@ class APIAliQwen(APIAli):
         Response json or iterable.
         """
 
-        # Get parameter.
+        # Handle parameter.
         json['model'] = self.model
         json['temperature'] = self.rand
         headers = {'Authorization': self.auth, 'Content-Type': 'application/json'}
@@ -226,8 +226,7 @@ class APIAliQwen(APIAli):
                 item['site'] = None
             if item['icon'] == '':
                 item['icon'] = None
-        if web_data == []:
-            web_data = None
+        web_data = web_data or None
 
         return web_data
 
@@ -450,7 +449,7 @@ class APIAliQwen(APIAli):
         Response content.
         """
 
-        # Get parameter.
+        # Handle parameter.
         json = {'input': {}, 'parameters': {}}
 
         ## Message.
@@ -548,7 +547,7 @@ class APIAliQwen(APIAli):
         Modified text.
         """
 
-        # Get parameter.
+        # Handle parameter.
         text = '润色冒号后的内容（注意！只返回润色后的内容正文，之后会直接整段使用）：' + text
         record = self.chat(text)
         result: str = record['content']

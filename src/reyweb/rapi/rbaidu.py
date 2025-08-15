@@ -128,7 +128,7 @@ class APIBaiduFanyi(APIBaidu):
         Signature.
         """
 
-        # Get parameter.
+        # Handle parameter.
         num_str = str(num)
 
         # Sign.
@@ -165,7 +165,7 @@ class APIBaiduFanyi(APIBaidu):
         Response dictionary.
         """
 
-        # Get parameter.
+        # Handle parameter.
         rand_num = randn(32768, 65536)
         sign = self.sign(text, rand_num)
         params = {
