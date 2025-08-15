@@ -449,6 +449,10 @@ class APIAliQwen(APIAli):
         Response content.
         """
 
+        # Check.
+        if text == '':
+            throw(ValueError, text)
+
         # Handle parameter.
         json = {'input': {}, 'parameters': {}}
 

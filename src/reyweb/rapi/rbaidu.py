@@ -128,6 +128,10 @@ class APIBaiduFanyi(APIBaidu):
         Signature.
         """
 
+        # Check.
+        if text == '':
+            throw(ValueError, text)
+
         # Handle parameter.
         num_str = str(num)
 
