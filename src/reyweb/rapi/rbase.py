@@ -81,7 +81,7 @@ class APIDBRecord(BaseAPI):
         """
 
         # Check.
-        if self.api.database is not None:
+        if self.api.database is None:
             return
 
         # Handle parameter.
@@ -98,7 +98,7 @@ class APIDBRecord(BaseAPI):
         """
 
         # Check.
-        if self.api.database is not None:
+        if self.api.database is None:
             return
 
         # Handle parameter.

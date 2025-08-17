@@ -252,14 +252,16 @@ class APIBaiduTranslate(APIBaidu):
         if to_lang is None:
             prefix = tuple('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
             if text[0].startswith(prefix):
+                from_lang = APIBaiduFanyiLangEnum.EN
                 to_lang = APIBaiduFanyiLangEnum.ZH
             else:
+                from_lang = APIBaiduFanyiLangEnum.ZH
                 to_lang = APIBaiduFanyiLangEnum.EN
 
         # Request.
-        self.db_record['request_time'] = now('timestamp')
+        self.db_record['request_time'] = now()
         response_dict = self.request(text, from_lang, to_lang)
-        self.db_record['response_time'] = now('timestamp')
+        self.db_record['response_time'] = now()
 
         # Extract.
         trans_text = '\n'.join(
