@@ -11,19 +11,21 @@
 
 from typing import TypedDict
 from enum import StrEnum
+from reydb.rdb import Database
 from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
 from reykit.ros import get_md5
 from reykit.rrand import randn
+from reykit.rtime import now
 
-from ..rbase import API
+from .rbase import API, APIDBRecord
 
 
 __all__ = (
     'APIBaidu',
     'APIBaiduFanyiLangEnum',
     'APIBaiduFanyiLangAutoEnum',
-    'APIBaiduFanyi'
+    'APIBaiduTranslate'
 )
 
 
@@ -80,10 +82,10 @@ class APIBaiduFanyiLangAutoEnum(APIBaidu, StrEnum):
     AUTO = 'auto'
 
 
-class APIBaiduFanyi(APIBaidu):
+class APIBaiduTranslate(APIBaidu):
     """
-    Baidu Fanyi API type.
-    API description: https://fanyi-api.baidu.com/product/113.
+    Baidu translate API type.
+    Can create database used `self.build` method.
     """
 
     url_api = 'http://api.fanyi.baidu.com/api/trans/vip/translate'
@@ -96,7 +98,8 @@ class APIBaiduFanyi(APIBaidu):
         self,
         appid: str,
         appkey: str,
-        is_auth: bool = True
+        database: Database | None = None,
+        max_len: int = 6000
     ) -> None:
         """
         Build instance attributes.
@@ -105,13 +108,27 @@ class APIBaiduFanyi(APIBaidu):
         ----------
         appid : APP ID.
         appkey : APP key.
-        is_auth : Is authorized.
+        database : `Database` instance, build database table and insert request record to table.
+        max_len : Maximun length.
+
+        Parameters
+        ----------
+        database : `Database` instance.
         """
 
         # Build.
         self.appid = appid
         self.appkey = appkey
-        self.is_auth = is_auth
+        self.database = database
+        self.max_len = max_len
+
+        # Database.
+        self.db_names = {
+            'api': 'api',
+            'api.baidu_trans': 'baidu_trans',
+            'api.stats_baidu_trans': 'stats_baidu_trans'
+        }
+        self.db_record = APIDBRecord(self, 'api', 'api.baidu_trans')
 
 
     def sign(self, text: str, num: int) -> str:
@@ -202,7 +219,7 @@ class APIBaiduFanyi(APIBaidu):
         return response_json
 
 
-    def translate(
+    def trans(
         self,
         text: str,
         from_lang: APIBaiduFanyiLangEnum | APIBaiduFanyiLangAutoEnum = APIBaiduFanyiLangAutoEnum.AUTO,
@@ -226,10 +243,9 @@ class APIBaiduFanyi(APIBaidu):
         """
 
         # Check.
-        max_len = (3000, 6000)[self.is_auth]
         text_len = len(text)
-        if len(text) > max_len:
-            throw(AssertionError, max_len, text_len)
+        if len(text) > self.max_len:
+            throw(AssertionError, self.max_len, text_len)
 
         # Handle parameter.
         text = text.strip()
@@ -241,7 +257,9 @@ class APIBaiduFanyi(APIBaidu):
                 to_lang = APIBaiduFanyiLangEnum.EN
 
         # Request.
+        self.db_record['request_time'] = now('timestamp')
         response_dict = self.request(text, from_lang, to_lang)
+        self.db_record['response_time'] = now('timestamp')
 
         # Extract.
         trans_text = '\n'.join(
@@ -251,7 +269,148 @@ class APIBaiduFanyi(APIBaidu):
             ]
         )
 
+        # Database.
+        self.db_record['input'] = text
+        self.db_record['output'] = trans_text
+        self.db_record['input_lang'] = from_lang
+        self.db_record['output_lang'] = to_lang
+        self.db_record.insert()
+
         return trans_text
 
 
-    __call__ = translate
+    def build_db(self) -> None:
+        """
+        Check and build all standard databases and tables, by `self.db_names`.
+        """
+
+        # Set parameter.
+
+        ## Database.
+        databases = [
+            {
+                'name': self.db_names['api']
+            }
+        ]
+
+        ## Table.
+        tables = [
+
+            ### 'baidu_trans'.
+            {
+                'path': (self.db_names['api'], self.db_names['api.baidu_trans']),
+                'fields': [
+                    {
+                        'name': 'id',
+                        'type': 'int unsigned',
+                        'constraint': 'NOT NULL AUTO_INCREMENT',
+                        'comment': 'ID.'
+                    },
+                    {
+                        'name': 'request_time',
+                        'type': 'datetime',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Request time.'
+                    },
+                    {
+                        'name': 'response_time',
+                        'type': 'datetime',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Response time.'
+                    },
+                    {
+                        'name': 'input',
+                        'type': 'varchar(6000)',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Input original text.'
+                    },
+                    {
+                        'name': 'output',
+                        'type': 'text',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Output translation text.'
+                    },
+                    {
+                        'name': 'input_lang',
+                        'type': 'varchar(4)',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Input original text language.'
+                    },
+                    {
+                        'name': 'output_lang',
+                        'type': 'varchar(3)',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Output translation text language.'
+                    }
+                ],
+                'primary': 'id',
+                'comment': 'Baidu API translate request record table.'
+            }
+
+        ]
+
+        ## View stats.
+        views_stats = [
+
+            ### 'stats'.
+            {
+                'path': (self.db_names['api'], self.db_names['api.stats_baidu_trans']),
+                'items': [
+                    {
+                        'name': 'count',
+                        'select': (
+                            'SELECT COUNT(1)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                        ),
+                        'comment': 'Request count.'
+                    },
+                    {
+                        'name': 'input_char_sum',
+                        'select': (
+                            'SELECT SUM(LENGTH(`input`))\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['file.baidu_trans']}`'
+                        ),
+                        'comment': 'Input original text total character.'
+                    },
+                    {
+                        'name': 'output_char_sum',
+                        'select': (
+                            'SELECT SUM(LENGTH(`output`))\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['file.baidu_trans']}`'
+                        ),
+                        'comment': 'Output translation text total character.'
+                    },
+                    {
+                        'name': 'input_char_avg',
+                        'select': (
+                            'SELECT AVG(LENGTH(`input`))\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['file.baidu_trans']}`'
+                        ),
+                        'comment': 'Input original text average character.'
+                    },
+                    {
+                        'name': 'output_char_avg',
+                        'select': (
+                            'SELECT AVG(LENGTH(`output`))\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['file.baidu_trans']}`'
+                        ),
+                        'comment': 'Output translation text average character.'
+                    },
+                    {
+                        'name': 'last_time',
+                        'select': (
+                            'SELECT MAX(`request_time`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                        ),
+                        'comment': 'Last record request time.'
+                    }
+                ]
+            }
+
+        ]
+
+        # Build.
+        self.database.build.build(databases, tables, views_stats=views_stats)
+
+
+    __call__ = trans

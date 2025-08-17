@@ -16,7 +16,7 @@ from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
 from reykit.rtime import now
 
-from ..rbase import API
+from .rbase import API
 
 
 __all__ = (
@@ -27,9 +27,8 @@ __all__ = (
 
 # Key 'role' value 'system' only in first.
 # Key 'role' value 'user' and 'assistant' can mix.
-# Key 'name' is distinguish users.
 type ChatRecordRole = Literal['system', 'user', 'assistant']
-ChatRecordUsage = TypedDict('ChatRecordUsage', {'input': int, 'output': int, 'total': int, 'output_think': int | None})
+ChatRecordToken = TypedDict('ChatRecordToken', {'input': int, 'output': int, 'total': int, 'output_think': int | None})
 ChatResponseWebItem = TypedDict('ChatResponseWebItem', {'site': str | None, 'icon': str | None, 'index': int, 'url': str, 'title': str})
 type ChatResponseWeb = list[ChatResponseWebItem]
 ChatRecord = TypedDict(
@@ -37,9 +36,8 @@ ChatRecord = TypedDict(
     {
         'time': int,
         'role': ChatRecordRole,
-        'name': str | None,
         'content': str | None,
-        'usage': ChatRecordUsage | None,
+        'token': ChatRecordToken | None,
         'web': ChatResponseWeb | None,
         'think': str | None
     }
@@ -71,7 +69,6 @@ class APIAliQwen(APIAli):
         self,
         key: str,
         role: str | None = None,
-        name: str | None = None,
         rand: float = 1
     ) -> None:
         """
@@ -81,7 +78,6 @@ class APIAliQwen(APIAli):
         ----------
         key : API key.
         role : AI role description.
-        name : AI role name.
         rand : Randomness, value range is `[0,2)`.
         """
 
@@ -93,7 +89,6 @@ class APIAliQwen(APIAli):
         self.key = key
         self.auth = 'Bearer ' + key
         self.role = role
-        self.name = name
         self.rand = rand
         self.data: ChatRecordsData = {}
 
@@ -173,7 +168,7 @@ class APIAliQwen(APIAli):
         return response_text
 
 
-    def extract_response_usage(self, response_json: dict) -> ChatRecordUsage | None:
+    def extract_response_token(self, response_json: dict) -> ChatRecordToken | None:
         """
         Extract usage token data from response JSON.
 
@@ -187,18 +182,18 @@ class APIAliQwen(APIAli):
         """
 
         # Extract.
-        usage_data: dict | None = response_json.get('usage')
-        if usage_data is not None:
-            usage_data_think: dict | None = usage_data.get('output_tokens_details', {})
-            output_think: int | None = usage_data_think.get('reasoning_tokens')
-            usage_data = {
-                'input': usage_data['input_tokens'],
-                'output': usage_data['output_tokens'],
-                'total': usage_data['total_tokens'],
+        token_data: dict | None = response_json.get('token')
+        if token_data is not None:
+            token_data_think: dict | None = token_data.get('output_tokens_details', {})
+            output_think: int | None = token_data_think.get('reasoning_tokens')
+            token_data = {
+                'input': token_data['input_tokens'],
+                'output': token_data['output_tokens'],
+                'total': token_data['total_tokens'],
                 'output_think': output_think
             }
 
-        return usage_data
+        return token_data
 
 
     def extract_response_web(self, response_json: dict) -> ChatResponseWeb | None:
@@ -267,10 +262,10 @@ class APIAliQwen(APIAli):
 
         # Extract.
         response_text = self.extract_response_text(response_json)
-        response_usage = self.extract_response_usage(response_json)
+        response_token = self.extract_response_token(response_json)
         response_web = self.extract_response_web(response_json)
         response_think = self.extract_response_think(response_json)
-        chat_records_reply = {'time': now('timestamp'), 'role': 'assistant', 'content': response_text, 'name': self.name, 'usage': response_usage, 'web': response_web, 'think': response_think}
+        chat_records_reply = {'time': now('timestamp'), 'role': 'assistant', 'content': response_text, 'token': response_token, 'web': response_web, 'think': response_think}
 
         return chat_records_reply
 
@@ -352,9 +347,9 @@ class APIAliQwen(APIAli):
                 response_line = response_line.strip()
                 response_json: dict = json_loads(response_line)
 
-                ## Usage.
-                response_usage = self.extract_response_usage(response_json)
-                chat_records_reply['usage'] = response_usage
+                ## Token.
+                response_token = self.extract_response_token(response_json)
+                chat_records_reply['token'] = response_token
 
                 ## Web.
                 if chat_records_reply['web'] is None:
@@ -393,7 +388,6 @@ class APIAliQwen(APIAli):
     def chat(
         self,
         text: str,
-        name: str | None = None,
         index: ChatRecordsIndex | None = None,
         web: bool = False,
         think: bool = False
@@ -403,7 +397,6 @@ class APIAliQwen(APIAli):
     def chat(
         self,
         text: str,
-        name: str | None = None,
         index: ChatRecordsIndex | None = None,
         web: bool = False,
         *,
@@ -414,7 +407,6 @@ class APIAliQwen(APIAli):
     def chat(
         self,
         text: str,
-        name: str | None = None,
         index: ChatRecordsIndex | None = None,
         web: bool = False,
         *,
@@ -425,7 +417,6 @@ class APIAliQwen(APIAli):
     def chat(
         self,
         text: str,
-        name: str | None = None,
         index: ChatRecordsIndex | None = None,
         web: bool = False,
         think: bool = False,
@@ -437,7 +428,6 @@ class APIAliQwen(APIAli):
         Parameters
         ----------
         text : User chat text.
-        name : User name.
         index : Chat records index.
             `None`: Not use record.
         web : Whether use web search.
@@ -469,11 +459,11 @@ class APIAliQwen(APIAli):
             chat_records == []
             and self.role is not None
         ):
-            chat_record_role = {'time': now('timestamp'), 'role': 'system', 'name': self.name, 'content': self.role, 'usage': None, 'web': None, 'think': None}
+            chat_record_role = {'time': now('timestamp'), 'role': 'system', 'content': self.role, 'token': None, 'web': None, 'think': None}
             chat_records_update.append(chat_record_role)
 
         ### Now.
-        chat_record_now = {'time': now('timestamp'), 'role': 'user', 'name': name, 'content': text, 'usage': None, 'web': None, 'think': None}
+        chat_record_now = {'time': now('timestamp'), 'role': 'user', 'content': text, 'token': None, 'web': None, 'think': None}
         chat_records_update.append(chat_record_now)
 
         messages: ChatRecords = chat_records + chat_records_update

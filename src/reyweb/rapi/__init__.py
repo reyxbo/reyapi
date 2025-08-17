@@ -9,9 +9,12 @@
 
 Modules
 -------
+rali : Ali API methods.
 rbaidu : Baidu API methods.
+rbase : API base methods.
 """
 
 
 from .rali import *
 from .rbaidu import *
+from .rbase import *
