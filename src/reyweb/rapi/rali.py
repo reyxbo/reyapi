@@ -568,9 +568,9 @@ class APIAliQwen(APIAli, APIDBBuild):
             return chat_records_reply
 
 
-    def modify(self, text: str) -> str:
+    def polish(self, text: str) -> str:
         """
-        Let AI modify text.
+        Let AI polish text.
 
         Parameters
         ----------
@@ -578,7 +578,7 @@ class APIAliQwen(APIAli, APIDBBuild):
 
         Returns
         -------
-        Modified text.
+        Polished text.
         """
 
         # Handle parameter.
