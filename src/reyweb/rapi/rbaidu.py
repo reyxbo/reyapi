@@ -16,6 +16,7 @@ from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
 from reykit.ros import get_md5
 from reykit.rrand import randn
+from reykit.rtext import is_zh
 from reykit.rtime import now
 
 from .rbase import API, APIDBBuild, APIDBRecord
@@ -219,10 +220,34 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
         return response_json
 
 
+    def get_lang(self, text: str) -> APIBaiduFanyiLangEnum | None:
+        """
+        Judge and get text language type.
+
+        Parameters
+        ----------
+        text : Text.
+
+        Returns
+        -------
+        Language type or null.
+        """
+
+        # Hangle parameter.
+        en_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+        # Judge.
+        for char in text:
+            if char in en_chars:
+                return APIBaiduFanyiLangEnum.EN
+            elif is_zh(char):
+                return APIBaiduFanyiLangEnum.ZH
+
+
     def trans(
         self,
         text: str,
-        from_lang: APIBaiduFanyiLangEnum | APIBaiduFanyiLangAutoEnum = APIBaiduFanyiLangAutoEnum.AUTO,
+        from_lang: APIBaiduFanyiLangEnum | APIBaiduFanyiLangAutoEnum | None = None,
         to_lang: APIBaiduFanyiLangEnum | None = None
     ) -> str:
         """
@@ -234,8 +259,9 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
             - `self.is_auth is True`: Maximum length is 6000.
             - `self.is_auth is False`: Maximum length is 3000.
         from_lang : Source language.
+            - `None`: Automatic judgment.
         to_lang : Target language.
-            - `None`: When text first character is letter, then is chinese, otherwise is english.
+            - `None`: Automatic judgment.
 
         Returns
         -------
@@ -249,13 +275,13 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
 
         # Handle parameter.
         text = text.strip()
+        if from_lang is None:
+            from_lang = self.get_lang(text)
+            from_lang = from_lang or APIBaiduFanyiLangAutoEnum.AUTO
         if to_lang is None:
-            prefix = tuple('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
-            if text[0].startswith(prefix):
-                from_lang = APIBaiduFanyiLangEnum.EN
+            if from_lang == APIBaiduFanyiLangEnum.EN:
                 to_lang = APIBaiduFanyiLangEnum.ZH
             else:
-                from_lang = APIBaiduFanyiLangEnum.ZH
                 to_lang = APIBaiduFanyiLangEnum.EN
 
         # Request.

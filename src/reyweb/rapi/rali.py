@@ -71,7 +71,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         self,
         key: str,
         database: Database | None = None,
-        role: str | None = None,
+        system: str | None = None,
         rand: float = 0.5
     ) -> None:
         """
@@ -81,7 +81,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         ----------
         key : API key.
         database : `Database` instance, insert request record to table.
-        role : AI role description.
+        system : AI system description.
         rand : Randomness, value range is `[0,1]`.
         """
 
@@ -93,7 +93,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         self.key = key
         self.auth = 'Bearer ' + key
         self.database = database
-        self.role = role
+        self.system = system
         self.rand = rand
         self.data: ChatRecordsData = {}
 
@@ -179,8 +179,11 @@ class APIAliQwen(APIAli, APIDBBuild):
         """
 
         # Extract.
-        response_text: str = response_json['output']['choices'][0]['message']['content']
-        response_text = response_text or None
+        output_data = response_json.get('output')
+        if output_data is not None:
+            response_text: str = output_data['choices'][0]['message']['content']
+        else:
+            response_text = None
 
         return response_text
 
@@ -199,13 +202,13 @@ class APIAliQwen(APIAli, APIDBBuild):
         """
 
         # Extract.
-        usage_data: dict | None = response_json.get('usage')
-        if usage_data is not None:
+        token_data: dict | None = response_json.get('usage')
+        if token_data is not None:
             token_data = {
-                'total': usage_data['total_tokens'],
-                'input': usage_data['input_tokens'],
-                'output': usage_data['output_tokens'],
-                'output_think': usage_data.get('output_tokens_details', {}).get('reasoning_tokens')
+                'total': token_data['total_tokens'],
+                'input': token_data['input_tokens'],
+                'output': token_data['output_tokens'],
+                'output_think': token_data.get('output_tokens_details', {}).get('reasoning_tokens')
             }
 
         return token_data
@@ -280,9 +283,9 @@ class APIAliQwen(APIAli, APIDBBuild):
         response_token = self.extract_response_token(response_json)
         response_web = self.extract_response_web(response_json)
         response_think = self.extract_response_think(response_json)
-        chat_records_reply = {'time': now('timestamp'), 'role': 'assistant', 'content': response_text, 'token': response_token, 'web': response_web, 'think': response_think}
+        chat_record_reply = {'time': now('timestamp'), 'role': 'assistant', 'content': response_text, 'token': response_token, 'web': response_web, 'think': response_think}
 
-        return chat_records_reply
+        return chat_record_reply
 
 
     def extract_response_generator(self, response_iter: Iterable[str]):
@@ -312,8 +315,8 @@ class APIAliQwen(APIAli, APIDBBuild):
 
         response_line_first = response_line_first[5:].strip()
         response_json_first: dict = json_loads(response_line_first)
-        chat_records_reply = self.extract_response_record(response_json_first)
-        is_think_emptied = not bool(chat_records_reply['think'])
+        chat_record_reply = self.extract_response_record(response_json_first)
+        is_think_emptied = not bool(chat_record_reply['think'])
 
         ### Define.
         def _generator(mode: Literal['text', 'think']) -> Generator[str, Any, None]:
@@ -333,8 +336,8 @@ class APIAliQwen(APIAli, APIDBBuild):
 
             # Handle parameter.
             nonlocal is_think_emptied
-            chat_records_reply['content'] = chat_records_reply['content'] or ''
-            chat_records_reply['think'] = chat_records_reply['think'] or ''
+            chat_record_reply['content'] = chat_record_reply['content'] or ''
+            chat_record_reply['think'] = chat_record_reply['think'] or ''
 
             # Check.
             if (
@@ -346,9 +349,9 @@ class APIAliQwen(APIAli, APIDBBuild):
 
             # First.
             if mode == 'text':
-                yield chat_records_reply['content']
+                yield chat_record_reply['content']
             elif mode == 'think':
-                yield chat_records_reply['think']
+                yield chat_record_reply['think']
 
             # Next.
             for response_line in response_iter:
@@ -364,19 +367,19 @@ class APIAliQwen(APIAli, APIDBBuild):
 
                 ## Token.
                 response_token = self.extract_response_token(response_json)
-                chat_records_reply['token'] = response_token
+                chat_record_reply['token'] = response_token
 
                 ## Web.
-                if chat_records_reply['web'] is None:
+                if chat_record_reply['web'] is None:
                     response_web = self.extract_response_web(response_json)
-                    chat_records_reply['web'] = response_web
+                    chat_record_reply['web'] = response_web
 
                 ## Text.
                 if mode == 'text':
                     response_text = self.extract_response_text(response_json)
                     if response_text is None:
                         continue
-                    chat_records_reply['content'] += response_text
+                    chat_record_reply['content'] += response_text
                     yield response_text
 
                 ## Think.
@@ -386,21 +389,21 @@ class APIAliQwen(APIAli, APIDBBuild):
                     ### Last.
                     if response_think is None:
                         is_think_emptied = True
-                        chat_records_reply['content'] = self.extract_response_text(response_json)
+                        chat_record_reply['content'] = self.extract_response_text(response_json)
                         break
 
-                    chat_records_reply['think'] += response_think
+                    chat_record_reply['think'] += response_think
                     yield response_think
 
             # Database.
             else:
-                self.insert_db(chat_records_reply)
+                self.insert_db(chat_record_reply)
 
 
         generator_text = _generator('text')
         generator_think = _generator('think')
 
-        return chat_records_reply, generator_text, generator_think
+        return chat_record_reply, generator_text, generator_think
 
 
     @overload
@@ -408,6 +411,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         self,
         text: str,
         index: ChatRecordsIndex | None = None,
+        role: str | None = None,
         web: bool = False,
     ) -> ChatRecord: ...
 
@@ -416,6 +420,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         self,
         text: str,
         index: ChatRecordsIndex | None = None,
+        system: str | None = None,
         web: bool = False,
         *,
         stream: Literal[True]
@@ -426,6 +431,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         self,
         text: str,
         index: ChatRecordsIndex | None = None,
+        system: str | None = None,
         web: bool = False,
         *,
         think: Literal[True],
@@ -437,6 +443,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         self,
         text: str,
         index: ChatRecordsIndex | None = None,
+        system: str | None = None,
         web: bool = False,
         *,
         think: Literal[True]
@@ -446,7 +453,9 @@ class APIAliQwen(APIAli, APIDBBuild):
         self,
         text: str,
         index: ChatRecordsIndex | None = None,
+        system: str | None = None,
         web: bool = False,
+        web_mark: bool = False,
         think: bool = False,
         stream: bool = False
     ) -> ChatRecord | tuple[ChatRecord, ChatReplyGenerator] | tuple[ChatRecord, ChatReplyGenerator, ChatThinkGenerator]:
@@ -458,7 +467,9 @@ class APIAliQwen(APIAli, APIDBBuild):
         text : User chat text.
         index : Chat records index.
             `None`: Not use record.
+        system : Extra AI system description, will be connected to `self.system`.
         web : Whether use web search.
+        web_mark : Whether display web search citation mark.
         think : Whether use deep think, when is `True`, then parameter `stream` must also be `True`.
         stream : Whether use stream response, record after full return values.
 
@@ -474,30 +485,34 @@ class APIAliQwen(APIAli, APIDBBuild):
             throw(ValueError, think, stream)
 
         # Handle parameter.
+        if (
+            system is not None
+            and self.system is not None
+        ):
+            system = ''.join([self.system, system])
+        elif system is None:
+            system = self.system
         json = {'input': {}, 'parameters': {}}
 
-        ## Message.
-        chat_records_update: ChatRecords = []
+        ## History.
         if index is not None:
-            chat_records: ChatRecords = self.data.setdefault(index, [])
+            chat_records_history: ChatRecords = self.data.setdefault(index, [])
         else:
-            chat_records: ChatRecords = []
+            chat_records_history: ChatRecords = []
 
-        ### New.
-        chat_record_role = None
-        if (
-            chat_records == []
-            and self.role is not None
-        ):
-            chat_record_role = {'time': now('timestamp'), 'role': 'system', 'content': self.role, 'token': None, 'web': None, 'think': None}
-            chat_records_update.append(chat_record_role)
+        ### Role.
+        if system is not None:
+            chat_record_role: ChatRecord = {'time': now('timestamp'), 'role': 'system', 'content': system, 'token': None, 'web': None, 'think': None}
+            chat_records_role: ChatRecords = [chat_record_role]
+        else:
+            chat_records_role: ChatRecords = []
 
         ### Now.
-        chat_record_now = {'time': now('timestamp'), 'role': 'user', 'content': text, 'token': None, 'web': None, 'think': None}
-        chat_records_update.append(chat_record_now)
+        chat_record_now: ChatRecord= {'time': now('timestamp'), 'role': 'user', 'content': text, 'token': None, 'web': None, 'think': None}
+        chat_records_now: ChatRecords = [chat_record_now]
 
-        messages: ChatRecords = chat_records + chat_records_update
-        records = [
+        messages: ChatRecords = chat_records_role + chat_records_history + chat_records_now
+        messages = [
             {
                 'role': message['role'],
                 'content': message['content']
@@ -506,11 +521,11 @@ class APIAliQwen(APIAli, APIDBBuild):
         ]
 
         ## Database.
-        self.db_record['messages'] = records
+        self.db_record['messages'] = messages
         self.db_record['model'] = self.model
 
         ## Message.
-        json['input']['messages'] = records
+        json['input']['messages'] = messages
         json['parameters']['result_format'] = 'message'
 
         ## Web.
@@ -518,8 +533,8 @@ class APIAliQwen(APIAli, APIDBBuild):
             json['parameters']['enable_search'] = True
             json['parameters']['search_options'] = {
                 'enable_source': True,
-                'enable_citation': True,
-                'citation_format': '[<number>]',
+                'enable_citation': web_mark,
+                'citation_format': ':[<number>]:',
                 'forced_search': False,
                 'search_strategy': 'turbo'
             }
@@ -542,30 +557,30 @@ class APIAliQwen(APIAli, APIDBBuild):
         ## Stream.
         if stream:
             response_iter: Iterable[str] = response
-            chat_records_reply, generator_text, generator_think = self.extract_response_generator(response_iter)
+            chat_record_reply, generator_text, generator_think = self.extract_response_generator(response_iter)
 
         ## Not Stream.
         else:
             response_json: dict = response
-            chat_records_reply = self.extract_response_record(response_json)
+            chat_record_reply = self.extract_response_record(response_json)
 
         # Record.
         if index is not None:
-            chat_records_update.append(chat_records_reply)
-            chat_records.extend(chat_records_update)
+            chat_records_history.append(chat_record_now)
+            chat_records_history.append(chat_record_reply)
 
         # Return.
         if stream:
             if think:
-                return chat_records_reply, generator_text, generator_think
+                return chat_record_reply, generator_text, generator_think
             else:
-                return chat_records_reply, generator_text
+                return chat_record_reply, generator_text
         else:
 
             ## Database.
-            self.insert_db(chat_records_reply)
+            self.insert_db(chat_record_reply)
 
-            return chat_records_reply
+            return chat_record_reply
 
 
     def polish(self, text: str) -> str:
