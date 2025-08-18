@@ -10,6 +10,7 @@
 
 
 from typing import Any
+from types import MethodType
 from threading import get_ident as threading_get_ident
 from reydb.rdb import Database
 
@@ -17,30 +18,30 @@ from ..rbase import BaseWeb
 
 
 __all__ = (
-    'BaseAPI',
     'API',
+    'APIDBBuild',
     'APIDBRecord'
 )
 
 
-class BaseAPI(BaseWeb):
-    """
-    External API base type.
-    """
-
-
-class API(BaseAPI):
+class API(BaseWeb):
     """
     External API type.
     """
 
-    url_api: str
-    url_document: str
+
+class APIDBBuild(API):
+    """
+    External API with database build method type.
+    Can create database used `self.build` method.
+    """
+
     database: Database | None
     db_names: dict[str, str]
+    build_db: MethodType
 
 
-class APIDBRecord(BaseAPI):
+class APIDBRecord(API):
     """
     External API database record type, can multi threaded.
     """
@@ -48,7 +49,7 @@ class APIDBRecord(BaseAPI):
 
     def __init__(
         self,
-        api: API | None = None,
+        api: APIDBBuild | None = None,
         database_index: str | None = None,
         table_index: str | None = None
     ) -> None:

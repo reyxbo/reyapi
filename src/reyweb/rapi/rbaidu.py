@@ -18,7 +18,7 @@ from reykit.ros import get_md5
 from reykit.rrand import randn
 from reykit.rtime import now
 
-from .rbase import API, APIDBRecord
+from .rbase import API, APIDBBuild, APIDBRecord
 
 
 __all__ = (
@@ -82,7 +82,7 @@ class APIBaiduFanyiLangAutoEnum(APIBaidu, StrEnum):
     AUTO = 'auto'
 
 
-class APIBaiduTranslate(APIBaidu):
+class APIBaiduTranslate(APIBaidu, APIDBBuild):
     """
     Baidu translate API type.
     Can create database used `self.build` method.
@@ -108,7 +108,7 @@ class APIBaiduTranslate(APIBaidu):
         ----------
         appid : APP ID.
         appkey : APP key.
-        database : `Database` instance, build database table and insert request record to table.
+        database : `Database` instance, insert request record to table.
         max_len : Maximun length.
 
         Parameters
@@ -323,13 +323,13 @@ class APIBaiduTranslate(APIBaidu):
                     {
                         'name': 'input',
                         'type': 'varchar(6000)',
-                        'constraint': 'NOT NULL',
+                        'constraint': 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL',
                         'comment': 'Input original text.'
                     },
                     {
                         'name': 'output',
                         'type': 'text',
-                        'constraint': 'NOT NULL',
+                        'constraint': 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL',
                         'comment': 'Output translation text.'
                     },
                     {
@@ -370,7 +370,7 @@ class APIBaiduTranslate(APIBaidu):
                         'name': 'input_char_sum',
                         'select': (
                             'SELECT SUM(LENGTH(`input`))\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['file.baidu_trans']}`'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
                         ),
                         'comment': 'Input original text total character.'
                     },
@@ -378,7 +378,7 @@ class APIBaiduTranslate(APIBaidu):
                         'name': 'output_char_sum',
                         'select': (
                             'SELECT SUM(LENGTH(`output`))\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['file.baidu_trans']}`'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
                         ),
                         'comment': 'Output translation text total character.'
                     },
@@ -386,7 +386,7 @@ class APIBaiduTranslate(APIBaidu):
                         'name': 'input_char_avg',
                         'select': (
                             'SELECT AVG(LENGTH(`input`))\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['file.baidu_trans']}`'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
                         ),
                         'comment': 'Input original text average character.'
                     },
@@ -394,7 +394,7 @@ class APIBaiduTranslate(APIBaidu):
                         'name': 'output_char_avg',
                         'select': (
                             'SELECT AVG(LENGTH(`output`))\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['file.baidu_trans']}`'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
                         ),
                         'comment': 'Output translation text average character.'
                     },

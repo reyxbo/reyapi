@@ -9,14 +9,15 @@
 """
 
 
-from typing import Any, TypedDict, Literal, Hashable, overload
+from typing import Any, TypedDict, Literal, Hashable, overload, NoReturn
 from collections.abc import Iterable, Generator
 from json import loads as json_loads
+from reydb.rdb import Database
 from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
 from reykit.rtime import now
 
-from .rbase import API
+from .rbase import API, APIDBBuild, APIDBRecord
 
 
 __all__ = (
@@ -28,7 +29,7 @@ __all__ = (
 # Key 'role' value 'system' only in first.
 # Key 'role' value 'user' and 'assistant' can mix.
 type ChatRecordRole = Literal['system', 'user', 'assistant']
-ChatRecordToken = TypedDict('ChatRecordToken', {'input': int, 'output': int, 'total': int, 'output_think': int | None})
+ChatRecordToken = TypedDict('ChatRecordToken', {'total': int, 'input': int, 'output': int, 'output_think': int | None})
 ChatResponseWebItem = TypedDict('ChatResponseWebItem', {'site': str | None, 'icon': str | None, 'index': int, 'url': str, 'title': str})
 type ChatResponseWeb = list[ChatResponseWebItem]
 ChatRecord = TypedDict(
@@ -55,9 +56,10 @@ class APIAli(API):
     """
 
 
-class APIAliQwen(APIAli):
+class APIAliQwen(APIAli, APIDBBuild):
     """
     Ali Ali QWen type.
+    Can create database used `self.build` method.
     """
 
     url_api = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
@@ -68,6 +70,7 @@ class APIAliQwen(APIAli):
     def __init__(
         self,
         key: str,
+        database: Database | None = None,
         role: str | None = None,
         rand: float = 1
     ) -> None:
@@ -77,6 +80,7 @@ class APIAliQwen(APIAli):
         Parameters
         ----------
         key : API key.
+        database : `Database` instance, insert request record to table.
         role : AI role description.
         rand : Randomness, value range is `[0,2)`.
         """
@@ -88,9 +92,18 @@ class APIAliQwen(APIAli):
         # Build.
         self.key = key
         self.auth = 'Bearer ' + key
+        self.database = database
         self.role = role
         self.rand = rand
         self.data: ChatRecordsData = {}
+
+        # Database.
+        self.db_names = {
+            'api': 'api',
+            'api.ali_qwen': 'ali_qwen',
+            'api.stats_ali_qwen': 'stats_ali_qwen'
+        }
+        self.db_record = APIDBRecord(self, 'api', 'api.ali_qwen')
 
 
     @overload
@@ -182,15 +195,13 @@ class APIAliQwen(APIAli):
         """
 
         # Extract.
-        token_data: dict | None = response_json.get('token')
-        if token_data is not None:
-            token_data_think: dict | None = token_data.get('output_tokens_details', {})
-            output_think: int | None = token_data_think.get('reasoning_tokens')
+        usage_data: dict | None = response_json.get('usage')
+        if usage_data is not None:
             token_data = {
-                'input': token_data['input_tokens'],
-                'output': token_data['output_tokens'],
-                'total': token_data['total_tokens'],
-                'output_think': output_think
+                'total': usage_data['total_tokens'],
+                'input': usage_data['input_tokens'],
+                'output': usage_data['output_tokens'],
+                'output_think': usage_data.get('output_tokens_details', {}).get('reasoning_tokens')
             }
 
         return token_data
@@ -377,6 +388,10 @@ class APIAliQwen(APIAli):
                     chat_records_reply['think'] += response_think
                     yield response_think
 
+            # Database.
+            else:
+                self.insert_db(chat_records_reply)
+
 
         generator_text = _generator('text')
         generator_think = _generator('think')
@@ -390,7 +405,6 @@ class APIAliQwen(APIAli):
         text: str,
         index: ChatRecordsIndex | None = None,
         web: bool = False,
-        think: bool = False
     ) -> ChatRecord: ...
 
     @overload
@@ -414,6 +428,16 @@ class APIAliQwen(APIAli):
         stream: Literal[True]
     ) -> tuple[ChatRecord, ChatReplyGenerator, ChatThinkGenerator]: ...
 
+    @overload
+    def chat(
+        self,
+        text: str,
+        index: ChatRecordsIndex | None = None,
+        web: bool = False,
+        *,
+        think: Literal[True]
+    ) -> NoReturn: ...
+
     def chat(
         self,
         text: str,
@@ -431,8 +455,8 @@ class APIAliQwen(APIAli):
         index : Chat records index.
             `None`: Not use record.
         web : Whether use web search.
-        think : Whether use deep think.
-        stream : Whether use stream response.
+        think : Whether use deep think, when is `True`, then paramter `stream` must also be `True`.
+        stream : Whether use stream response, record after full return values.
 
         Returns
         -------
@@ -442,6 +466,8 @@ class APIAliQwen(APIAli):
         # Check.
         if text == '':
             throw(ValueError, text)
+        if think and not stream:
+            throw(ValueError, think, stream)
 
         # Handle parameter.
         json = {'input': {}, 'parameters': {}}
@@ -475,7 +501,11 @@ class APIAliQwen(APIAli):
             for message in messages
         ]
 
-        # Add.
+        ## Database.
+        self.db_record['messages'] = records
+        self.db_record['model'] = self.model
+
+        ## Message.
         json['input']['messages'] = records
         json['parameters']['result_format'] = 'message'
 
@@ -499,7 +529,9 @@ class APIAliQwen(APIAli):
         json['stream'] = stream
 
         # Request.
+        self.db_record['request_time'] = now()
         response = self.request(json, stream)
+        self.db_record['response_time'] = now()
 
         # Extract.
 
@@ -525,6 +557,10 @@ class APIAliQwen(APIAli):
             else:
                 return chat_records_reply, generator_text
         else:
+
+            ## Database.
+            self.insert_db(chat_records_reply)
+
             return chat_records_reply
 
 
@@ -548,6 +584,222 @@ class APIAliQwen(APIAli):
         result = result.strip()
 
         return result
+
+
+    def build_db(self) -> None:
+        """
+        Check and build all standard databases and tables, by `self.db_names`.
+        """
+
+        # Set parameter.
+
+        ## Database.
+        databases = [
+            {
+                'name': self.db_names['api']
+            }
+        ]
+
+        ## Table.
+        tables = [
+
+            ### 'ali_qwen'.
+            {
+                'path': (self.db_names['api'], self.db_names['api.ali_qwen']),
+                'fields': [
+                    {
+                        'name': 'id',
+                        'type': 'int unsigned',
+                        'constraint': 'NOT NULL AUTO_INCREMENT',
+                        'comment': 'ID.'
+                    },
+                    {
+                        'name': 'request_time',
+                        'type': 'datetime',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Request time.'
+                    },
+                    {
+                        'name': 'response_time',
+                        'type': 'datetime',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Response time, when is stream response, then is full return after time.'
+                    },
+                    {
+                        'name': 'messages',
+                        'type': 'json',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Input messages data.'
+                    },
+                    {
+                        'name': 'reply',
+                        'type': 'text',
+                        'constraint': 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL',
+                        'comment': 'Output reply text.'
+                    },
+                    {
+                        'name': 'think',
+                        'type': 'text',
+                        'constraint': 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL',
+                        'comment': 'Output deep think text.'
+                    },
+                    {
+                        'name': 'web',
+                        'type': 'json',
+                        'comment': 'Web search data.'
+                    },
+                    {
+                        'name': 'token_total',
+                        'type': 'mediumint',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Usage total Token.'
+                    },
+                    {
+                        'name': 'token_input',
+                        'type': 'mediumint',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Usage input Token.'
+                    },
+                    {
+                        'name': 'token_output',
+                        'type': 'smallint',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Usage output Token.'
+                    },
+                    {
+                        'name': 'token_output_think',
+                        'type': 'smallint',
+                        'comment': 'Usage output think Token.'
+                    },
+                    {
+                        'name': 'model',
+                        'type': 'varchar(100)',
+                        'constraint': 'NOT NULL',
+                        'comment': 'Model name.'
+                    }
+                ],
+                'primary': 'id',
+                'comment': 'Ali API qwen model request record table.'
+            }
+
+        ]
+
+        ## View stats.
+        views_stats = [
+
+            ### 'stats'.
+            {
+                'path': (self.db_names['api'], self.db_names['api.stats_ali_qwen']),
+                'items': [
+                    {
+                        'name': 'count',
+                        'select': (
+                            'SELECT COUNT(1)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Request count.'
+                    },
+                    {
+                        'name': 'token_total_sum',
+                        'select': (
+                            'SELECT SUM(`token_total`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Usage total Token.'
+                    },
+                    {
+                        'name': 'token_input_sum',
+                        'select': (
+                            'SELECT SUM(`token_input`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Usage input total Token.'
+                    },
+                    {
+                        'name': 'token_output_sum',
+                        'select': (
+                            'SELECT SUM(`token_output`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Usage output total Token.'
+                    },
+                    {
+                        'name': 'token_output_think_sum',
+                        'select': (
+                            'SELECT SUM(`token_output_think`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Usage output think total Token.'
+                    },
+                    {
+                        'name': 'token_total_avg',
+                        'select': (
+                            'SELECT AVG(`token_total`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Usage average Token.'
+                    },
+                    {
+                        'name': 'token_input_avg',
+                        'select': (
+                            'SELECT AVG(`token_input`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Usage input average Token.'
+                    },
+                    {
+                        'name': 'token_output_avg',
+                        'select': (
+                            'SELECT AVG(`token_output`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Usage output average Token.'
+                    },
+                    {
+                        'name': 'token_output_think_avg',
+                        'select': (
+                            'SELECT AVG(`token_output_think`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Usage output think average Token.'
+                    },
+                    {
+                        'name': 'last_time',
+                        'select': (
+                            'SELECT MAX(`request_time`)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                        ),
+                        'comment': 'Last record request time.'
+                    }
+                ]
+            }
+
+        ]
+
+        # Build.
+        self.database.build.build(databases, tables, views_stats=views_stats)
+
+
+    def insert_db(self, record: ChatRecord) -> None:
+        """
+        Insert record to table of database.
+
+        Parameters
+        ----------
+        record : Record data.
+        """
+
+        # Handle parameter.
+        self.db_record['reply'] = record['content']
+        self.db_record['think'] = record['think']
+        self.db_record['web'] = record['web']
+        self.db_record['token_total'] = record['token']['total']
+        self.db_record['token_input'] = record['token']['input']
+        self.db_record['token_output'] = record['token']['output']
+        self.db_record['token_output_think'] = record['token']['output_think']
+
+        # Insert.
+        self.db_record.insert()
 
 
     __call__ = chat
