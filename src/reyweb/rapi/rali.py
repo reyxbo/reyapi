@@ -459,7 +459,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         index : Chat records index.
             `None`: Not use record.
         web : Whether use web search.
-        think : Whether use deep think, when is `True`, then paramter `stream` must also be `True`.
+        think : Whether use deep think, when is `True`, then parameter `stream` must also be `True`.
         stream : Whether use stream response, record after full return values.
 
         Returns
