@@ -72,7 +72,7 @@ class APIAliQwen(APIAli, APIDBBuild):
         key: str,
         database: Database | None = None,
         role: str | None = None,
-        rand: float = 1
+        rand: float = 0.5
     ) -> None:
         """
         Build instance attributes.
@@ -82,11 +82,11 @@ class APIAliQwen(APIAli, APIDBBuild):
         key : API key.
         database : `Database` instance, insert request record to table.
         role : AI role description.
-        rand : Randomness, value range is `[0,2)`.
+        rand : Randomness, value range is `[0,1]`.
         """
 
         # Check.
-        if not 0 <= rand < 2:
+        if not 0 <= rand <= 1:
             throw(ValueError, rand)
 
         # Build.
@@ -128,11 +128,15 @@ class APIAliQwen(APIAli, APIDBBuild):
 
         # Handle parameter.
         json['model'] = self.model
-        json['temperature'] = self.rand
+        json_params = json.setdefault('parameters', {})
+        json_params_temperature = self.rand * 2
+        if json_params_temperature == 2:
+            json_params_temperature = 1.99
+        json_params['temperature'] = json_params_temperature
+        json_params['presence_penalty'] = self.rand * 4 - 2
         headers = {'Authorization': self.auth, 'Content-Type': 'application/json'}
         if stream:
             headers['X-DashScope-SSE'] = 'enable'
-            json_params = json.setdefault('parameters', {})
             json_params['incremental_output'] = True
 
         # Request.
