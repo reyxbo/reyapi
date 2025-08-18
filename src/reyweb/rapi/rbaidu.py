@@ -286,6 +286,10 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
         Check and build all standard databases and tables, by `self.db_names`.
         """
 
+        # Check.
+        if self.database is None:
+            throw(ValueError, self.database)
+
         # Set parameter.
 
         ## Database.
