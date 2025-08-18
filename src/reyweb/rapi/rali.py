@@ -710,7 +710,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                     {
                         'name': 'token_total_sum',
                         'select': (
-                            'SELECT SUM(`token_total`)\n'
+                            'SELECT FORMAT(SUM(`token_total`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
                         ),
                         'comment': 'Usage total Token.'
@@ -718,7 +718,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                     {
                         'name': 'token_input_sum',
                         'select': (
-                            'SELECT SUM(`token_input`)\n'
+                            'SELECT FORMAT(SUM(`token_input`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
                         ),
                         'comment': 'Usage input total Token.'
@@ -726,7 +726,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                     {
                         'name': 'token_output_sum',
                         'select': (
-                            'SELECT SUM(`token_output`)\n'
+                            'SELECT FORMAT(SUM(`token_output`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
                         ),
                         'comment': 'Usage output total Token.'
@@ -734,7 +734,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                     {
                         'name': 'token_output_think_sum',
                         'select': (
-                            'SELECT SUM(`token_output_think`)\n'
+                            'SELECT FORMAT(SUM(`token_output_think`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
                         ),
                         'comment': 'Usage output think total Token.'
@@ -742,7 +742,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                     {
                         'name': 'token_total_avg',
                         'select': (
-                            'SELECT AVG(`token_total`)\n'
+                            'SELECT FORMAT(AVG(`token_total`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
                         ),
                         'comment': 'Usage average Token.'
@@ -750,7 +750,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                     {
                         'name': 'token_input_avg',
                         'select': (
-                            'SELECT AVG(`token_input`)\n'
+                            'SELECT FORMAT(AVG(`token_input`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
                         ),
                         'comment': 'Usage input average Token.'
@@ -758,7 +758,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                     {
                         'name': 'token_output_avg',
                         'select': (
-                            'SELECT AVG(`token_output`)\n'
+                            'SELECT FORMAT(AVG(`token_output`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
                         ),
                         'comment': 'Usage output average Token.'
@@ -766,7 +766,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                     {
                         'name': 'token_output_think_avg',
                         'select': (
-                            'SELECT AVG(`token_output_think`)\n'
+                            'SELECT FORMAT(AVG(`token_output_think`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
                         ),
                         'comment': 'Usage output think average Token.'

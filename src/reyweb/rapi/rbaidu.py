@@ -371,33 +371,33 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
                         'comment': 'Request count.'
                     },
                     {
-                        'name': 'input_char_sum',
+                        'name': 'input_sum',
                         'select': (
-                            'SELECT SUM(LENGTH(`input`))\n'
+                            'SELECT FORMAT(SUM(LENGTH(`input`)), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
                         ),
                         'comment': 'Input original text total character.'
                     },
                     {
-                        'name': 'output_char_sum',
+                        'name': 'output_sum',
                         'select': (
-                            'SELECT SUM(LENGTH(`output`))\n'
+                            'SELECT FORMAT(SUM(LENGTH(`output`)), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
                         ),
                         'comment': 'Output translation text total character.'
                     },
                     {
-                        'name': 'input_char_avg',
+                        'name': 'input_avg',
                         'select': (
-                            'SELECT AVG(LENGTH(`input`))\n'
+                            'SELECT FORMAT(AVG(LENGTH(`input`)), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
                         ),
                         'comment': 'Input original text average character.'
                     },
                     {
-                        'name': 'output_char_avg',
+                        'name': 'output_avg',
                         'select': (
-                            'SELECT AVG(LENGTH(`output`))\n'
+                            'SELECT FORMAT(AVG(LENGTH(`output`)), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
                         ),
                         'comment': 'Output translation text average character.'
