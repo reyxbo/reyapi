@@ -19,7 +19,8 @@ from reykit.rrand import randn
 from reykit.rtext import is_zh
 from reykit.rtime import now
 
-from .rbase import API, APIDBBuild, APIDBRecord
+from ..rbase import API
+from .rdb import APIDatabaseBuild, APIDatabaseRecord
 
 
 __all__ = (
@@ -83,7 +84,7 @@ class APIBaiduFanyiLangAutoEnum(APIBaidu, StrEnum):
     AUTO = 'auto'
 
 
-class APIBaiduTranslate(APIBaidu, APIDBBuild):
+class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
     """
     Baidu translate API type.
     Can create database used `self.build` method.
@@ -129,7 +130,7 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
             'api.baidu_trans': 'baidu_trans',
             'api.stats_baidu_trans': 'stats_baidu_trans'
         }
-        self.db_record = APIDBRecord(self, 'api', 'api.baidu_trans')
+        self.db_record = APIDatabaseRecord(self, 'api', 'api.baidu_trans')
 
 
     def sign(self, text: str, num: int) -> str:
@@ -397,7 +398,34 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
                         'comment': 'Request count.'
                     },
                     {
-                        'name': 'input_sum',
+                        'name': 'past_day_count',
+                        'select': (
+                            'SELECT COUNT(1)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) = 0'
+                        ),
+                        'comment': 'Request count in the past day.'
+                    },
+                    {
+                        'name': 'past_week_count',
+                        'select': (
+                            'SELECT COUNT(1)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) <= 6'
+                        ),
+                        'comment': 'Request count in the past week.'
+                    },
+                    {
+                        'name': 'past_month_count',
+                        'select': (
+                            'SELECT COUNT(1)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) <= 29'
+                        ),
+                        'comment': 'Request count in the past month.'
+                    },
+                    {
+                        'name': 'total_input',
                         'select': (
                             'SELECT FORMAT(SUM(LENGTH(`input`)), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
@@ -405,7 +433,7 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
                         'comment': 'Input original text total character.'
                     },
                     {
-                        'name': 'output_sum',
+                        'name': 'total_output',
                         'select': (
                             'SELECT FORMAT(SUM(LENGTH(`output`)), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
@@ -413,7 +441,7 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
                         'comment': 'Output translation text total character.'
                     },
                     {
-                        'name': 'input_avg',
+                        'name': 'avg_input',
                         'select': (
                             'SELECT FORMAT(AVG(LENGTH(`input`)), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
@@ -421,7 +449,7 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
                         'comment': 'Input original text average character.'
                     },
                     {
-                        'name': 'output_avg',
+                        'name': 'avg_output',
                         'select': (
                             'SELECT FORMAT(AVG(LENGTH(`output`)), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
@@ -437,6 +465,7 @@ class APIBaiduTranslate(APIBaidu, APIDBBuild):
                         'comment': 'Last record request time.'
                     }
                 ]
+
             }
 
         ]

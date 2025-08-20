@@ -13,11 +13,18 @@ from reykit.rbase import Base
 
 
 __all__ = (
-    'BaseWeb',
+    'WebBase',
+    'API'
 )
 
 
-class BaseWeb(Base):
+class WebBase(Base):
     """
     Web base type.
+    """
+
+
+class API(WebBase):
+    """
+    External API type.
     """

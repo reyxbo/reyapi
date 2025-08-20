@@ -5,7 +5,7 @@
 @Time    : 2025-08-17 22:12:34
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : API base methods.
+@Explain : API database methods.
 """
 
 
@@ -14,23 +14,16 @@ from types import MethodType
 from threading import get_ident as threading_get_ident
 from reydb.rdb import Database
 
-from ..rbase import BaseWeb
+from ..rbase import API
 
 
 __all__ = (
-    'API',
-    'APIDBBuild',
-    'APIDBRecord'
+    'APIDatabaseBuild',
+    'APIDatabaseRecord'
 )
 
 
-class API(BaseWeb):
-    """
-    External API type.
-    """
-
-
-class APIDBBuild(API):
+class APIDatabaseBuild(API):
     """
     External API with database build method type.
     Can create database used `self.build` method.
@@ -41,7 +34,7 @@ class APIDBBuild(API):
     build_db: MethodType
 
 
-class APIDBRecord(API):
+class APIDatabaseRecord(API):
     """
     External API database record type, can multi threaded.
     """
@@ -49,7 +42,7 @@ class APIDBRecord(API):
 
     def __init__(
         self,
-        api: APIDBBuild | None = None,
+        api: APIDatabaseBuild | None = None,
         database_index: str | None = None,
         table_index: str | None = None
     ) -> None:

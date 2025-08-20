@@ -17,7 +17,8 @@ from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
 from reykit.rtime import now
 
-from .rbase import API, APIDBBuild, APIDBRecord
+from ..rbase import API
+from .rdb import APIDatabaseBuild, APIDatabaseRecord
 
 
 __all__ = (
@@ -56,7 +57,7 @@ class APIAli(API):
     """
 
 
-class APIAliQwen(APIAli, APIDBBuild):
+class APIAliQwen(APIAli, APIDatabaseBuild):
     """
     Ali Ali QWen type.
     Can create database used `self.build` method.
@@ -103,7 +104,7 @@ class APIAliQwen(APIAli, APIDBBuild):
             'api.ali_qwen': 'ali_qwen',
             'api.stats_ali_qwen': 'stats_ali_qwen'
         }
-        self.db_record = APIDBRecord(self, 'api', 'api.ali_qwen')
+        self.db_record = APIDatabaseRecord(self, 'api', 'api.ali_qwen')
 
 
     @overload
@@ -723,7 +724,34 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Request count.'
                     },
                     {
-                        'name': 'token_total_sum',
+                        'name': 'past_day_count',
+                        'select': (
+                            'SELECT COUNT(1)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) = 0'
+                        ),
+                        'comment': 'Request count in the past day.'
+                    },
+                    {
+                        'name': 'past_week_count',
+                        'select': (
+                            'SELECT COUNT(1)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) <= 6'
+                        ),
+                        'comment': 'Request count in the past week.'
+                    },
+                    {
+                        'name': 'past_month_count',
+                        'select': (
+                            'SELECT COUNT(1)\n'
+                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) <= 29'
+                        ),
+                        'comment': 'Request count in the past month.'
+                    },
+                    {
+                        'name': 'total_token',
                         'select': (
                             'SELECT FORMAT(SUM(`token_total`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
@@ -731,7 +759,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Usage total Token.'
                     },
                     {
-                        'name': 'token_input_sum',
+                        'name': 'total_token_input',
                         'select': (
                             'SELECT FORMAT(SUM(`token_input`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
@@ -739,7 +767,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Usage input total Token.'
                     },
                     {
-                        'name': 'token_output_sum',
+                        'name': 'total_token_output',
                         'select': (
                             'SELECT FORMAT(SUM(`token_output`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
@@ -747,7 +775,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Usage output total Token.'
                     },
                     {
-                        'name': 'token_output_think_sum',
+                        'name': 'total_token_output_think',
                         'select': (
                             'SELECT FORMAT(SUM(`token_output_think`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
@@ -755,7 +783,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Usage output think total Token.'
                     },
                     {
-                        'name': 'token_total_avg',
+                        'name': 'avg_token',
                         'select': (
                             'SELECT FORMAT(AVG(`token_total`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
@@ -763,7 +791,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Usage average Token.'
                     },
                     {
-                        'name': 'token_input_avg',
+                        'name': 'avg_token_input',
                         'select': (
                             'SELECT FORMAT(AVG(`token_input`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
@@ -771,7 +799,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Usage input average Token.'
                     },
                     {
-                        'name': 'token_output_avg',
+                        'name': 'avg_token_output',
                         'select': (
                             'SELECT FORMAT(AVG(`token_output`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
@@ -779,7 +807,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Usage output average Token.'
                     },
                     {
-                        'name': 'token_output_think_avg',
+                        'name': 'avg_token_output_think',
                         'select': (
                             'SELECT FORMAT(AVG(`token_output_think`), 0)\n'
                             f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
@@ -795,6 +823,7 @@ class APIAliQwen(APIAli, APIDBBuild):
                         'comment': 'Last record request time.'
                     }
                 ]
+
             }
 
         ]
