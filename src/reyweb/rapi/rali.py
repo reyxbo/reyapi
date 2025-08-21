@@ -397,6 +397,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                     if response_text is None:
                         continue
                     chat_record_reply['content'] += response_text
+                    chat_record_reply['len'] += len(response_text)
                     yield response_text
 
                 ## Think.
@@ -406,7 +407,10 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                     ### Last.
                     if response_think is None:
                         is_think_emptied = True
-                        chat_record_reply['content'] = self.extract_response_text(response_json)
+                        response_text = self.extract_response_text(response_json)
+                        chat_record_reply['content'] = response_text
+                        if response_text is not None:
+                            chat_record_reply['len'] += len(response_text)
                         break
 
                     chat_record_reply['think'] += response_think
@@ -606,7 +610,6 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         elif system is None:
             system = self.system
         json = {'input': {}, 'parameters': {}}
-        now_timestamp = now('timestamp')
 
         ## History.
         chat_records_history = self.get_chat_records_history(index, history_max_char, history_max_time, True)
@@ -614,7 +617,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         ### Role.
         if system is not None:
             chat_record_role: ChatRecord = {
-                'time': now_timestamp,
+                'time': now('timestamp'),
                 'role': 'system',
                 'content': system,
                 'len': len(system),
@@ -628,7 +631,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
 
         ### Now.
         chat_record_now: ChatRecord= {
-            'time': now_timestamp,
+            'time': now('timestamp'),
             'role': 'user',
             'content': text,
             'len': len(text),
