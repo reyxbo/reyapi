@@ -541,7 +541,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                 'enable_citation': web_mark,
                 'citation_format': '[ref_<number>]',
                 'forced_search': False,
-                'search_strategy': 'turbo',
+                'search_strategy': 'max',
                 'prepend_search_result': False,
                 'enable_search_extension': True
             }
