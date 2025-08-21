@@ -39,6 +39,7 @@ ChatRecord = TypedDict(
         'time': int,
         'role': ChatRecordRole,
         'content': str | None,
+        'len': int | None,
         'token': ChatRecordToken | None,
         'web': ChatResponseWeb | None,
         'think': str | None
@@ -73,7 +74,9 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         key: str,
         database: Database | None = None,
         system: str | None = None,
-        rand: float = 0.5
+        rand: float = 0.5,
+        history_max_char: int | None = None,
+        history_max_time: float | None = None
     ) -> None:
         """
         Build instance attributes.
@@ -83,7 +86,9 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         key : API key.
         database : `Database` instance, insert request record to table.
         system : AI system description.
-        rand : Randomness, value range is `[0,1]`.
+        rand : AI reply randomness, value range is `[0,1]`.
+        history_max_char : History messages record maximum character count.
+        history_max_time : History messages record maximum second.
         """
 
         # Check.
@@ -96,6 +101,8 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         self.database = database
         self.system = system
         self.rand = rand
+        self.history_max_char = history_max_char
+        self.history_max_time = history_max_time
         self.data: ChatRecordsData = {}
 
         # Database.
@@ -284,7 +291,16 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         response_token = self.extract_response_token(response_json)
         response_web = self.extract_response_web(response_json)
         response_think = self.extract_response_think(response_json)
-        chat_record_reply = {'time': now('timestamp'), 'role': 'assistant', 'content': response_text, 'token': response_token, 'web': response_web, 'think': response_think}
+        response_text_len = response_text and len(response_text)
+        chat_record_reply = {
+            'time': now('timestamp'),
+            'role': 'assistant',
+            'content': response_text,
+            'len': response_text_len,
+            'token': response_token,
+            'web': response_web,
+            'think': response_think
+        }
 
         return chat_record_reply
 
@@ -407,6 +423,84 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         return chat_record_reply, generator_text, generator_think
 
 
+    def get_chat_records_history(
+        self,
+        index: ChatRecordsIndex | None = None,
+        history_max_char: int | None = None,
+        history_max_time: float | None = None,
+        delete: bool = False
+    ) -> ChatRecords:
+        """
+        Get chat records.
+
+        Parameters
+        ----------
+        index : Chat records index.
+            `None`: Not use record.
+        history_max_char : History messages record maximum character count.
+            - `None`: Use `self.history_max_char`.
+        history_max_time : History messages record maximum second.
+            - `None`: Use `self.history_max_time`.
+        delete : Whether delete records of beyond the range from history.
+
+        Returns
+        -------
+        Chat records.
+        """
+
+        # Handle parameter.
+        now_timestamp = now('timestamp')
+
+        # Index.
+        if index is not None:
+            chat_records_history: ChatRecords = self.data.setdefault(index, [])
+        else:
+            chat_records_history: ChatRecords = []
+
+        # Max.
+        if history_max_char is None:
+            history_max_char = self.history_max_char
+        if history_max_time is None:
+            history_max_time = self.history_max_time
+        if history_max_time is not None:
+            history_max_time_us = history_max_time * 1000
+        char_len = 0
+        chat_records_history_reverse = chat_records_history[::-1]
+        beyond_index = None
+        for index, chat_record in enumerate(chat_records_history_reverse):
+            if (
+                (
+                    history_max_char is not None
+                    and (char_len := char_len + chat_record['len']) > history_max_char
+                )
+                or (
+                    history_max_time is not None
+                    and now_timestamp - chat_record['time'] > history_max_time_us
+                )
+            ):
+                beyond_index = -index
+                break
+
+        # Beyond.
+        if beyond_index is not None:
+
+            ## Delete.
+            if delete:
+                if beyond_index == 0:
+                    chat_records_history.clear()
+                else:
+                    del chat_records_history[:beyond_index]
+
+            ## Keep.
+            else:
+                if beyond_index == 0:
+                    chat_records_history = []
+                else:
+                    chat_records_history = chat_records_history[beyond_index:]
+
+        return chat_records_history
+
+
     @overload
     def chat(
         self,
@@ -415,6 +509,8 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         role: str | None = None,
         web: bool = False,
         web_mark: bool = False,
+        history_max_char: int | None = None,
+        history_max_time: float | None = None
     ) -> ChatRecord: ...
 
     @overload
@@ -426,7 +522,9 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         web: bool = False,
         web_mark: bool = False,
         *,
-        stream: Literal[True]
+        stream: Literal[True],
+        history_max_char: int | None = None,
+        history_max_time: float | None = None
     ) -> tuple[ChatRecord, ChatReplyGenerator]: ...
 
     @overload
@@ -439,7 +537,9 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         web_mark: bool = False,
         *,
         think: Literal[True],
-        stream: Literal[True]
+        stream: Literal[True],
+        history_max_char: int | None = None,
+        history_max_time: float | None = None
     ) -> tuple[ChatRecord, ChatReplyGenerator, ChatThinkGenerator]: ...
 
     @overload
@@ -451,7 +551,9 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         web: bool = False,
         web_mark: bool = False,
         *,
-        think: Literal[True]
+        think: Literal[True],
+        history_max_char: int | None = None,
+        history_max_time: float | None = None
     ) -> NoReturn: ...
 
     def chat(
@@ -462,7 +564,9 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         web: bool = False,
         web_mark: bool = False,
         think: bool = False,
-        stream: bool = False
+        stream: bool = False,
+        history_max_char: int | None = None,
+        history_max_time: float | None = None
     ) -> ChatRecord | tuple[ChatRecord, ChatReplyGenerator] | tuple[ChatRecord, ChatReplyGenerator, ChatThinkGenerator]:
         """
         Chat with AI.
@@ -477,6 +581,10 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         web_mark : Whether display web search citation mark, format is `[ref_<number>]`.
         think : Whether use deep think, when is `True`, then parameter `stream` must also be `True`.
         stream : Whether use stream response, record after full return values.
+        history_max_char : History messages record maximum character count.
+            - `None`: Use `self.history_max_char`.
+        history_max_time : History messages record maximum second.
+            - `None`: Use `self.history_max_time`.
 
         Returns
         -------
@@ -498,22 +606,36 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         elif system is None:
             system = self.system
         json = {'input': {}, 'parameters': {}}
+        now_timestamp = now('timestamp')
 
         ## History.
-        if index is not None:
-            chat_records_history: ChatRecords = self.data.setdefault(index, [])
-        else:
-            chat_records_history: ChatRecords = []
+        chat_records_history = self.get_chat_records_history(index, history_max_char, history_max_time, True)
 
         ### Role.
         if system is not None:
-            chat_record_role: ChatRecord = {'time': now('timestamp'), 'role': 'system', 'content': system, 'token': None, 'web': None, 'think': None}
+            chat_record_role: ChatRecord = {
+                'time': now_timestamp,
+                'role': 'system',
+                'content': system,
+                'len': len(system),
+                'token': None,
+                'web': None,
+                'think': None
+            }
             chat_records_role: ChatRecords = [chat_record_role]
         else:
             chat_records_role: ChatRecords = []
 
         ### Now.
-        chat_record_now: ChatRecord= {'time': now('timestamp'), 'role': 'user', 'content': text, 'token': None, 'web': None, 'think': None}
+        chat_record_now: ChatRecord= {
+            'time': now_timestamp,
+            'role': 'user',
+            'content': text,
+            'len': len(text),
+            'token': None,
+            'web': None,
+            'think': None
+        }
         chat_records_now: ChatRecords = [chat_record_now]
 
         messages: ChatRecords = chat_records_role + chat_records_history + chat_records_now
