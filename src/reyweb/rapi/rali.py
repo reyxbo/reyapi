@@ -309,7 +309,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                 continue
             response_line_first = response_line
             break
-        
+
         ## Check.
         if response_line_first is None:
             throw(AssertionError, response_line_first)
@@ -414,6 +414,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         index: ChatRecordsIndex | None = None,
         role: str | None = None,
         web: bool = False,
+        web_mark: bool = False,
     ) -> ChatRecord: ...
 
     @overload
@@ -423,6 +424,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         index: ChatRecordsIndex | None = None,
         system: str | None = None,
         web: bool = False,
+        web_mark: bool = False,
         *,
         stream: Literal[True]
     ) -> tuple[ChatRecord, ChatReplyGenerator]: ...
@@ -434,6 +436,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         index: ChatRecordsIndex | None = None,
         system: str | None = None,
         web: bool = False,
+        web_mark: bool = False,
         *,
         think: Literal[True],
         stream: Literal[True]
@@ -446,6 +449,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         index: ChatRecordsIndex | None = None,
         system: str | None = None,
         web: bool = False,
+        web_mark: bool = False,
         *,
         think: Literal[True]
     ) -> NoReturn: ...
@@ -470,7 +474,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
             `None`: Not use record.
         system : Extra AI system description, will be connected to `self.system`.
         web : Whether use web search.
-        web_mark : Whether display web search citation mark.
+        web_mark : Whether display web search citation mark, format is `[ref_<number>]`.
         think : Whether use deep think, when is `True`, then parameter `stream` must also be `True`.
         stream : Whether use stream response, record after full return values.
 
@@ -535,9 +539,11 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
             json['parameters']['search_options'] = {
                 'enable_source': True,
                 'enable_citation': web_mark,
-                'citation_format': ':[<number>]:',
+                'citation_format': '[ref_<number>]',
                 'forced_search': False,
-                'search_strategy': 'turbo'
+                'search_strategy': 'turbo',
+                'prepend_search_result': False,
+                'enable_search_extension': True
             }
         else:
             json['parameters']['enable_search'] = False
