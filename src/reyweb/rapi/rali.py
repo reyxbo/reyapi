@@ -982,7 +982,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         self.db_record['token_output_think'] = record['token']['output_think']
 
         # Insert.
-        self.db_record.insert()
+        self.db_record.record()
 
 
     __call__ = chat

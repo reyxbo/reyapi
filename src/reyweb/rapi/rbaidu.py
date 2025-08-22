@@ -303,7 +303,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
         self.db_record['output'] = trans_text
         self.db_record['input_lang'] = from_lang
         self.db_record['output_lang'] = to_lang
-        self.db_record.insert()
+        self.db_record.record()
 
         return trans_text
 

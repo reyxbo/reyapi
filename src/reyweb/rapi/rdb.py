@@ -86,7 +86,7 @@ class APIDatabaseRecord(API):
         record[key] = value
 
 
-    def insert(self) -> None:
+    def record(self) -> None:
         """
         Insert record to table of database.
         """
