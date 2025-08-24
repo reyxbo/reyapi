@@ -9,7 +9,7 @@
 """
 
 
-from typing import Any, TypedDict, Literal, overload, NoReturn
+from typing import Any, TypedDict, NotRequired, Literal, overload, NoReturn
 from collections.abc import Hashable, Iterable, Generator
 from json import loads as json_loads
 from reydb.rdb import Database
@@ -48,6 +48,8 @@ ChatRecord = TypedDict(
 type ChatRecords = list[ChatRecord]
 type ChatRecordsIndex = Hashable
 type ChatRecordsData = dict[ChatRecordsIndex, ChatRecords]
+ChatRecordsAppend = TypedDict('ChatRecordsAppend', {'role': NotRequired[ChatRecordRole | None], 'content': str})
+type ChatRecordsAppends = list[ChatRecordsAppend]
 ChatReplyGenerator = Generator[str, Any, None]
 ChatThinkGenerator = Generator[str, Any, None]
 
@@ -427,9 +429,63 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         return chat_record_reply, generator_text, generator_think
 
 
+    def append_chat_records_history(
+        self,
+        records: ChatRecordsAppend | ChatRecordsAppends | list[str],
+        index: ChatRecordsIndex,
+        history_max_char: int | None = None,
+        history_max_time: float | None = None
+    ) -> None:
+        """
+        Append chat records.
+        Delete records of beyond the range from history.
+
+        Parameters
+        ----------
+        records: Chat reocrds.
+            - `Key 'role'`: Message sender role, default `user`.
+            - `Key 'content'`: Message content, required.
+            - `list[str]`: Message content list.
+        index : Chat records index.
+        history_max_char : History messages record maximum character count.
+            - `None`: Use `self.history_max_char`.
+        history_max_time : History messages record maximum second.
+            - `None`: Use `self.history_max_time`.
+        """
+
+        # Handle parameter.
+        if type(records) == dict:
+            records = [records]
+        elif type(records) == list:
+            records = [
+                {'content': record}
+                for record in records
+            ]
+        now_timestamp = now('timestamp')
+        records = [
+            {
+                'time': now_timestamp,
+                'role': record.get('role', 'user'),
+                'content': record['content'],
+                'len': len(record['content']),
+                'token': None,
+                'web': None,
+                'think': None
+            }
+            for record in records
+        ]
+        chat_records_history: ChatRecords = self.data.setdefault(index, [])
+
+        # Append.
+        chat_records_history.extend(records)
+
+        # Beyond.
+        self.get_chat_records_history(index, history_max_char, history_max_time, True)
+
+
     def get_chat_records_history(
         self,
-        index: ChatRecordsIndex | None = None,
+        index: ChatRecordsIndex,
         history_max_char: int | None = None,
         history_max_time: float | None = None,
         delete: bool = False
@@ -440,7 +496,6 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         Parameters
         ----------
         index : Chat records index.
-            `None`: Not use record.
         history_max_char : History messages record maximum character count.
             - `None`: Use `self.history_max_char`.
         history_max_time : History messages record maximum second.
@@ -454,12 +509,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
 
         # Handle parameter.
         now_timestamp = now('timestamp')
-
-        # Index.
-        if index is not None:
-            chat_records_history: ChatRecords = self.data.setdefault(index, [])
-        else:
-            chat_records_history: ChatRecords = []
+        chat_records_history: ChatRecords = self.data.setdefault(index, [])
 
         # Max.
         if history_max_char is None:
@@ -612,7 +662,10 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         json = {'input': {}, 'parameters': {}}
 
         ## History.
-        chat_records_history = self.get_chat_records_history(index, history_max_char, history_max_time, True)
+        if index is not None:
+            chat_records_history = self.get_chat_records_history(index, history_max_char, history_max_time, True)
+        else:
+            chat_records_history: ChatRecords = []
 
         ### Role.
         if system is not None:
