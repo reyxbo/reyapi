@@ -431,7 +431,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
 
     def append_chat_records_history(
         self,
-        records: ChatRecordsAppend | ChatRecordsAppends | list[str],
+        records: ChatRecordsAppend | ChatRecordsAppends | str | list[str],
         index: ChatRecordsIndex,
         history_max_char: int | None = None,
         history_max_time: float | None = None
@@ -445,6 +445,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         records: Chat reocrds.
             - `Key 'role'`: Message sender role, default `user`.
             - `Key 'content'`: Message content, required.
+            - `str`: Message content.
             - `list[str]`: Message content list.
         index : Chat records index.
         history_max_char : History messages record maximum character count.
@@ -456,6 +457,8 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         # Handle parameter.
         if type(records) == dict:
             records = [records]
+        elif type(records) == str:
+            records = [{'content': records}]
         elif type(records) == list:
             records = [
                 {'content': record}
