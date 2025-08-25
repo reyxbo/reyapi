@@ -293,7 +293,10 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         response_token = self.extract_response_token(response_json)
         response_web = self.extract_response_web(response_json)
         response_think = self.extract_response_think(response_json)
-        response_text_len = response_text and len(response_text)
+        if response_text is None:
+            response_text_len = None
+        else:
+            response_text_len = len(response_text)
         chat_record_reply = {
             'time': now('timestamp'),
             'role': 'assistant',
