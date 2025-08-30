@@ -87,7 +87,7 @@ class APIBaiduFanyiLangAutoEnum(APIBaidu, StrEnum):
 class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
     """
     Baidu translate API type.
-    Can create database used `self.build` method.
+    Can create database used `self.build_db` method.
     """
 
     url_api = 'http://api.fanyi.baidu.com/api/trans/vip/translate'

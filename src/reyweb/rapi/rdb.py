@@ -26,7 +26,7 @@ __all__ = (
 class APIDatabaseBuild(API):
     """
     External API with database build method type.
-    Can create database used `self.build` method.
+    Can create database used `self.build_db` method.
     """
 
     database: Database | None

@@ -63,7 +63,7 @@ class APIAli(API):
 class APIAliQwen(APIAli, APIDatabaseBuild):
     """
     Ali Ali QWen type.
-    Can create database used `self.build` method.
+    Can create database used `self.build_db` method.
     """
 
     url_api = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
