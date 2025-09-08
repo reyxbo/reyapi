@@ -467,10 +467,9 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                 {'content': record}
                 for record in records
             ]
-        now_timestamp = now('timestamp')
         records = [
             {
-                'time': now_timestamp,
+                'time': now('timestamp'),
                 'role': record.get('role', 'user'),
                 'content': record['content'],
                 'len': len(record['content']),
@@ -484,6 +483,10 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
 
         # Append.
         chat_records_history.extend(records)
+
+        # Sort.
+        sort_key = lambda chat_record: chat_record['time']
+        chat_records_history.sort(key=sort_key)
 
         # Beyond.
         self.get_chat_records_history(index, history_max_char, history_max_time, True)
