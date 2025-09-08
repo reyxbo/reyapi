@@ -48,7 +48,7 @@ ChatRecord = TypedDict(
 type ChatRecords = list[ChatRecord]
 type ChatRecordsIndex = Hashable
 type ChatRecordsData = dict[ChatRecordsIndex, ChatRecords]
-ChatRecordsAppend = TypedDict('ChatRecordsAppend', {'role': NotRequired[ChatRecordRole | None], 'content': str})
+ChatRecordsAppend = TypedDict('ChatRecordsAppend', {'time': NotRequired[int], 'role': NotRequired[ChatRecordRole], 'content': str})
 type ChatRecordsAppends = list[ChatRecordsAppend]
 ChatReplyGenerator = Generator[str, Any, None]
 ChatThinkGenerator = Generator[str, Any, None]
@@ -458,18 +458,21 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         """
 
         # Handle parameter.
-        if type(records) == dict:
-            records = [records]
-        elif type(records) == str:
+        if type(records) == str:
             records = [{'content': records}]
+        elif type(records) == dict:
+            records = [records]
         elif type(records) == list:
             records = [
-                {'content': record}
+                {'content': records}
+                if type(record) == str
+                else record
                 for record in records
             ]
+        now_timestamp = now('timestamp')
         records = [
             {
-                'time': now('timestamp'),
+                'time': record.get('time', now_timestamp),
                 'role': record.get('role', 'user'),
                 'content': record['content'],
                 'len': len(record['content']),
