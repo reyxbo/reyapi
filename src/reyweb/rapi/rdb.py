@@ -104,7 +104,7 @@ class APIDatabaseRecord(API):
         )
 
         # Insert.
-        self.api.database.execute_insert(path, record)
+        self.api.database.execute.insert(path, record)
 
         # Delete.
         del self.data[thread_id]
