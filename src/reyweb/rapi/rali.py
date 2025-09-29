@@ -804,7 +804,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
 
     def build_db(self) -> None:
         """
-        Check and build all standard databases and tables, by `self.db_names`.
+        Check and build database tables, by `self.db_names`.
         """
 
         # Check.

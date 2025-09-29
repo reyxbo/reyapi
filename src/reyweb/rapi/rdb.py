@@ -98,13 +98,10 @@ class APIDatabaseRecord(API):
         # Handle parameter.
         thread_id = threading_get_ident()
         record = self.data.setdefault(thread_id, {})
-        path = (
-            self.api.db_names[self.database],
-            self.api.db_names[self.table]
-        )
+        table = self.api.db_names[self.table]
 
         # Insert.
-        self.api.database.execute.insert(path, record)
+        self.api.database.execute.insert(table, record)
 
         # Delete.
         del self.data[thread_id]
