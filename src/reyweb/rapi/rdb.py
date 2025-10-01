@@ -78,7 +78,7 @@ class APIDatabaseRecord(API):
         if self.api.database is None:
             return
 
-        # Handle parameter.
+        # Set parameter.
         thread_id = threading_get_ident()
         record = self.data.setdefault(thread_id, {})
 
@@ -95,7 +95,7 @@ class APIDatabaseRecord(API):
         if self.api.database is None:
             return
 
-        # Handle parameter.
+        # Set parameter.
         thread_id = threading_get_ident()
         record = self.data.setdefault(thread_id, {})
         table = self.api.db_names[self.table]

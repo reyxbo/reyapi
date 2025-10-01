@@ -151,7 +151,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
         if text == '':
             throw(ValueError, text)
 
-        # Handle parameter.
+        # Set parameter.
         num_str = str(num)
 
         # Sign.
@@ -188,7 +188,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
         Response dictionary.
         """
 
-        # Handle parameter.
+        # Set parameter.
         rand_num = randn(32768, 65536)
         sign = self.sign(text, rand_num)
         params = {
@@ -274,7 +274,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
         if len(text) > self.max_len:
             throw(AssertionError, self.max_len, text_len)
 
-        # Handle parameter.
+        # Set parameter.
         text = text.strip()
         if from_lang is None:
             from_lang = self.get_lang(text)

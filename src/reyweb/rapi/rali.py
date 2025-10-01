@@ -136,7 +136,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         Response json or iterable.
         """
 
-        # Handle parameter.
+        # Set parameter.
         json['model'] = self.model
         json_params = json.setdefault('parameters', {})
         json_params_temperature = self.rand * 2
@@ -356,7 +356,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
             Generator.
             """
 
-            # Handle parameter.
+            # Set parameter.
             nonlocal is_think_emptied
             chat_record_reply['content'] = chat_record_reply['content'] or ''
             chat_record_reply['think'] = chat_record_reply['think'] or ''
@@ -457,7 +457,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
             - `None`: Use `self.history_max_time`.
         """
 
-        # Handle parameter.
+        # Set parameter.
         if type(records) == str:
             records = [{'content': records}]
         elif type(records) == dict:
@@ -519,7 +519,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         Chat records.
         """
 
-        # Handle parameter.
+        # Set parameter.
         now_timestamp = now('timestamp')
         chat_records_history: ChatRecords = self.data.setdefault(index, [])
 
@@ -663,7 +663,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         if think and not stream:
             throw(ValueError, think, stream)
 
-        # Handle parameter.
+        # Set parameter.
         if (
             system is not None
             and self.system is not None
@@ -793,7 +793,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         Polished text.
         """
 
-        # Handle parameter.
+        # Set parameter.
         text = '润色冒号后的内容（注意！只返回润色后的内容正文，之后会直接整段使用）：' + text
         record = self.chat(text)
         result: str = record['content']
@@ -1037,7 +1037,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         record : Record data.
         """
 
-        # Handle parameter.
+        # Set parameter.
         self.db_record['reply'] = record['content']
         self.db_record['think'] = record['think']
         self.db_record['web'] = record['web']
