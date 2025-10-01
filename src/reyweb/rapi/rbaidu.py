@@ -11,6 +11,7 @@
 
 from typing import TypedDict
 from enum import StrEnum
+from reydb import rorm
 from reydb.rdb import Database
 from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
@@ -24,6 +25,7 @@ from .rdb import APIDatabaseBuild, APIDatabaseRecord
 
 
 __all__ = (
+    'DatabaseTableBaiduTrans',
     'APIBaidu',
     'APIBaiduFanyiLangEnum',
     'APIBaiduFanyiLangAutoEnum',
@@ -33,6 +35,21 @@ __all__ = (
 
 FanyiResponseResult = TypedDict('FanyiResponseResult', {'src': str, 'dst': str})
 FanyiResponse = TypedDict('FanyiResponse', {'from': str, 'to': str, 'trans_result': list[FanyiResponseResult]})
+
+
+class DatabaseTableBaiduTrans(rorm.Model, table=True):
+    """
+    Database `baidu_trans` table model.
+    """
+
+    __comment__ = 'Baidu API translate request record table.'
+    id: int = rorm.Field(rorm.types_mysql.INTEGER(unsigned=True), key_auto=True, comment='ID.')
+    request_time: rorm.Datetime = rorm.Field(not_null=True, comment='Request time.')
+    response_time: rorm.Datetime = rorm.Field(not_null=True, comment='Response time.')
+    input: str = rorm.Field(rorm.types.VARCHAR(6000), not_null=True, comment='Input original text.')
+    output: str = rorm.Field(rorm.types.TEXT, not_null=True, comment='Output translation text.')
+    input_lang: str = rorm.Field(rorm.types.VARCHAR(4), not_null=True, comment='Input original text language.')
+    output_lang: str = rorm.Field(rorm.types.VARCHAR(3), not_null=True, comment='Output translation text language.')
 
 
 class APIBaidu(API):
@@ -88,19 +105,31 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
     """
     Baidu translate API type.
     Can create database used `self.build_db` method.
+
+    Attributes
+    ----------
+    url_api : API request URL.
+    url_doc : API document URL.
+    LangEnum : Baidu Fanyi APT language enumeration type.
+    LangEnum : Baidu Fanyi APT language auto type enumeration.
+    db_names : Database table name mapping dictionary.
     """
 
     url_api = 'http://api.fanyi.baidu.com/api/trans/vip/translate'
-    url_document = 'https://fanyi-api.baidu.com/product/113'
+    url_doc = 'https://fanyi-api.baidu.com/product/113'
     LangEnum = APIBaiduFanyiLangEnum
     LangAutoEnum = APIBaiduFanyiLangAutoEnum
+    db_names = {
+        'baidu_trans': 'baidu_trans',
+        'stats_baidu_trans': 'stats_baidu_trans'
+    }
 
 
     def __init__(
         self,
         appid: str,
         appkey: str,
-        database: Database | None = None,
+        db: Database | None = None,
         max_len: int = 6000
     ) -> None:
         """
@@ -110,27 +139,18 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
         ----------
         appid : APP ID.
         appkey : APP key.
-        database : `Database` instance, insert request record to table.
+        db : `Database` instance, insert request record to table.
         max_len : Maximun length.
-
-        Parameters
-        ----------
-        database : `Database` instance.
         """
 
         # Build.
         self.appid = appid
         self.appkey = appkey
-        self.database = database
+        self.db = db
         self.max_len = max_len
 
         # Database.
-        self.db_names = {
-            'api': 'api',
-            'api.baidu_trans': 'baidu_trans',
-            'api.stats_baidu_trans': 'stats_baidu_trans'
-        }
-        self.db_record = APIDatabaseRecord(self, 'api', 'api.baidu_trans')
+        self.db_record = APIDatabaseRecord(self, 'api', 'baidu_trans')
 
 
     def sign(self, text: str, num: int) -> str:
@@ -314,86 +334,25 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
         """
 
         # Check.
-        if self.database is None:
-            throw(ValueError, self.database)
+        if self.db is None:
+            throw(ValueError, self.db)
 
         # Set parameter.
 
-        ## Database.
-        databases = [
-            {
-                'name': self.db_names['api']
-            }
-        ]
-
         ## Table.
-        tables = [
-
-            ### 'baidu_trans'.
-            {
-                'path': (self.db_names['api'], self.db_names['api.baidu_trans']),
-                'fields': [
-                    {
-                        'name': 'id',
-                        'type': 'int unsigned',
-                        'constraint': 'NOT NULL AUTO_INCREMENT',
-                        'comment': 'ID.'
-                    },
-                    {
-                        'name': 'request_time',
-                        'type': 'datetime',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Request time.'
-                    },
-                    {
-                        'name': 'response_time',
-                        'type': 'datetime',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Response time.'
-                    },
-                    {
-                        'name': 'input',
-                        'type': 'varchar(6000)',
-                        'constraint': 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL',
-                        'comment': 'Input original text.'
-                    },
-                    {
-                        'name': 'output',
-                        'type': 'text',
-                        'constraint': 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL',
-                        'comment': 'Output translation text.'
-                    },
-                    {
-                        'name': 'input_lang',
-                        'type': 'varchar(4)',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Input original text language.'
-                    },
-                    {
-                        'name': 'output_lang',
-                        'type': 'varchar(3)',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Output translation text language.'
-                    }
-                ],
-                'primary': 'id',
-                'comment': 'Baidu API translate request record table.'
-            }
-
-        ]
+        tables = [DatabaseTableBaiduTrans]
+        DatabaseTableBaiduTrans._set_name(self.db_names['baidu_trans'])
 
         ## View stats.
         views_stats = [
-
-            ### 'stats'.
             {
-                'path': (self.db_names['api'], self.db_names['api.stats_baidu_trans']),
+                'path': self.db_names['stats_baidu_trans'],
                 'items': [
                     {
                         'name': 'count',
                         'select': (
                             'SELECT COUNT(1)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                         ),
                         'comment': 'Request count.'
                     },
@@ -401,7 +360,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
                         'name': 'past_day_count',
                         'select': (
                             'SELECT COUNT(1)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                             'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) = 0'
                         ),
                         'comment': 'Request count in the past day.'
@@ -410,7 +369,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
                         'name': 'past_week_count',
                         'select': (
                             'SELECT COUNT(1)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                             'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) <= 6'
                         ),
                         'comment': 'Request count in the past week.'
@@ -419,7 +378,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
                         'name': 'past_month_count',
                         'select': (
                             'SELECT COUNT(1)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                             'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) <= 29'
                         ),
                         'comment': 'Request count in the past month.'
@@ -428,7 +387,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
                         'name': 'total_input',
                         'select': (
                             'SELECT FORMAT(SUM(LENGTH(`input`)), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                         ),
                         'comment': 'Input original text total character.'
                     },
@@ -436,7 +395,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
                         'name': 'total_output',
                         'select': (
                             'SELECT FORMAT(SUM(LENGTH(`output`)), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                         ),
                         'comment': 'Output translation text total character.'
                     },
@@ -444,7 +403,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
                         'name': 'avg_input',
                         'select': (
                             'SELECT FORMAT(AVG(LENGTH(`input`)), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                         ),
                         'comment': 'Input original text average character.'
                     },
@@ -452,7 +411,7 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
                         'name': 'avg_output',
                         'select': (
                             'SELECT FORMAT(AVG(LENGTH(`output`)), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                         ),
                         'comment': 'Output translation text average character.'
                     },
@@ -460,18 +419,16 @@ class APIBaiduTranslate(APIBaidu, APIDatabaseBuild):
                         'name': 'last_time',
                         'select': (
                             'SELECT MAX(`request_time`)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.baidu_trans']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['baidu_trans']}`'
                         ),
                         'comment': 'Last record request time.'
                     }
                 ]
-
             }
-
         ]
 
         # Build.
-        self.database.build.build(databases, tables, views_stats=views_stats)
+        self.db.build.build(tables=tables, views_stats=views_stats, skip=True)
 
 
     __call__ = trans

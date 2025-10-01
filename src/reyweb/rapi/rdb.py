@@ -29,7 +29,7 @@ class APIDatabaseBuild(API):
     Can create database used `self.build_db` method.
     """
 
-    database: Database | None
+    db: Database | None
     db_names: dict[str, str]
     build_db: MethodType
 
@@ -43,8 +43,8 @@ class APIDatabaseRecord(API):
     def __init__(
         self,
         api: APIDatabaseBuild | None = None,
-        database_index: str | None = None,
-        table_index: str | None = None
+        database: str | None = None,
+        table: str | None = None
     ) -> None:
         """
         Build instance attributes.
@@ -53,14 +53,14 @@ class APIDatabaseRecord(API):
         ----------
         api : `API` instance.
             - `None`: Not record.
-        database_index : Index `API.db_names` database name.
-        table_index : Index `API.db_names` table name.
+        database : Index `API.db_names` database name.
+        table : Index `API.db_names` table name.
         """
 
         # Build.
         self.api = api
-        self.database = database_index
-        self.table = table_index
+        self.database = database
+        self.table = table
         self.data: dict[int, dict[str, Any]] = {}
 
 
@@ -75,7 +75,7 @@ class APIDatabaseRecord(API):
         """
 
         # Check.
-        if self.api.database is None:
+        if self.api.db is None:
             return
 
         # Set parameter.
@@ -92,7 +92,7 @@ class APIDatabaseRecord(API):
         """
 
         # Check.
-        if self.api.database is None:
+        if self.api.db is None:
             return
 
         # Set parameter.
@@ -101,7 +101,7 @@ class APIDatabaseRecord(API):
         table = self.api.db_names[self.table]
 
         # Insert.
-        self.api.database.execute.insert(table, record)
+        self.api.db.execute.insert(table, record)
 
         # Delete.
         del self.data[thread_id]

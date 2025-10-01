@@ -12,6 +12,7 @@
 from typing import Any, TypedDict, NotRequired, Literal, overload, NoReturn
 from collections.abc import Hashable, Iterable, Generator
 from json import loads as json_loads
+from reydb import rorm
 from reydb.rdb import Database
 from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
@@ -22,6 +23,7 @@ from .rdb import APIDatabaseBuild, APIDatabaseRecord
 
 
 __all__ = (
+    'DatabaseTableAliQwen',
     'APIAli',
     'APIAliQwen'
 )
@@ -54,6 +56,26 @@ ChatReplyGenerator = Generator[str, Any, None]
 ChatThinkGenerator = Generator[str, Any, None]
 
 
+class DatabaseTableAliQwen(rorm.Model, table=True):
+    """
+    Database `ali_qwen` table model.
+    """
+
+    __comment__ = 'Ali API qwen model request record table.'
+    id: int = rorm.Field(rorm.types_mysql.INTEGER(unsigned=True), key_auto=True, comment='ID.')
+    request_time: rorm.Datetime = rorm.Field(not_null=True, comment='Request time.')
+    response_time: rorm.Datetime = rorm.Field(not_null=True, comment='Response time, when is stream response, then is full return after time.')
+    messages: str = rorm.Field(rorm.types.JSON, not_null=True, comment='Input messages data.')
+    reply: str = rorm.Field(rorm.types.TEXT, not_null=True, comment='Output reply text.')
+    think: str = rorm.Field(rorm.types.TEXT, comment='Output deep think text.')
+    web: str = rorm.Field(rorm.types.JSON, not_null=True, comment='Web search data.')
+    token_total: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), not_null=True, comment='Usage total Token.')
+    token_input: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), not_null=True, comment='Usage input Token.')
+    token_output: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), not_null=True, comment='Usage output Token.')
+    token_output_think: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), comment='Usage output think Token.')
+    model: str = rorm.Field(rorm.types.VARCHAR(100), not_null=True, comment='Model name.')
+
+
 class APIAli(API):
     """
     Ali API type.
@@ -64,17 +86,28 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
     """
     Ali Ali QWen type.
     Can create database used `self.build_db` method.
+
+    Attributes
+    ----------
+    url_api : API request URL.
+    url_doc : API document URL.
+    model = API AI model type.
+    db_names : Database table name mapping dictionary.
     """
 
     url_api = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
-    url_document = 'https://help.aliyun.com/zh/model-studio/use-qwen-by-calling-api?spm=a2c4g.11186623.0.0.330e7d9dSBCaZQ'
+    url_doc = 'https://help.aliyun.com/zh/model-studio/use-qwen-by-calling-api?spm=a2c4g.11186623.0.0.330e7d9dSBCaZQ'
     model = 'qwen-turbo-latest'
+    db_names = {
+        'ali_qwen': 'ali_qwen',
+        'stats_ali_qwen': 'stats_ali_qwen'
+    }
 
 
     def __init__(
         self,
         key: str,
-        database: Database | None = None,
+        db: Database | None = None,
         system: str | None = None,
         rand: float = 0.5,
         history_max_char: int | None = None,
@@ -86,7 +119,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         Parameters
         ----------
         key : API key.
-        database : `Database` instance, insert request record to table.
+        db : `Database` instance, insert request record to table.
         system : AI system description.
         rand : AI reply randomness, value range is `[0,1]`.
         history_max_char : History messages record maximum character count.
@@ -100,7 +133,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         # Build.
         self.key = key
         self.auth = 'Bearer ' + key
-        self.database = database
+        self.db = db
         self.system = system
         self.rand = rand
         self.history_max_char = history_max_char
@@ -108,12 +141,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         self.data: ChatRecordsData = {}
 
         # Database.
-        self.db_names = {
-            'api': 'api',
-            'api.ali_qwen': 'ali_qwen',
-            'api.stats_ali_qwen': 'stats_ali_qwen'
-        }
-        self.db_record = APIDatabaseRecord(self, 'api', 'api.ali_qwen')
+        self.db_record = APIDatabaseRecord(self, 'api', 'ali_qwen')
 
 
     @overload
@@ -808,114 +836,25 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         """
 
         # Check.
-        if self.database is None:
-            throw(ValueError, self.database)
+        if self.db is None:
+            throw(ValueError, self.db)
 
         # Set parameter.
 
-        ## Database.
-        databases = [
-            {
-                'name': self.db_names['api']
-            }
-        ]
-
         ## Table.
-        tables = [
-
-            ### 'ali_qwen'.
-            {
-                'path': (self.db_names['api'], self.db_names['api.ali_qwen']),
-                'fields': [
-                    {
-                        'name': 'id',
-                        'type': 'int unsigned',
-                        'constraint': 'NOT NULL AUTO_INCREMENT',
-                        'comment': 'ID.'
-                    },
-                    {
-                        'name': 'request_time',
-                        'type': 'datetime',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Request time.'
-                    },
-                    {
-                        'name': 'response_time',
-                        'type': 'datetime',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Response time, when is stream response, then is full return after time.'
-                    },
-                    {
-                        'name': 'messages',
-                        'type': 'json',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Input messages data.'
-                    },
-                    {
-                        'name': 'reply',
-                        'type': 'text',
-                        'constraint': 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL',
-                        'comment': 'Output reply text.'
-                    },
-                    {
-                        'name': 'think',
-                        'type': 'text',
-                        'constraint': 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL',
-                        'comment': 'Output deep think text.'
-                    },
-                    {
-                        'name': 'web',
-                        'type': 'json',
-                        'comment': 'Web search data.'
-                    },
-                    {
-                        'name': 'token_total',
-                        'type': 'mediumint',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Usage total Token.'
-                    },
-                    {
-                        'name': 'token_input',
-                        'type': 'mediumint',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Usage input Token.'
-                    },
-                    {
-                        'name': 'token_output',
-                        'type': 'smallint',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Usage output Token.'
-                    },
-                    {
-                        'name': 'token_output_think',
-                        'type': 'smallint',
-                        'comment': 'Usage output think Token.'
-                    },
-                    {
-                        'name': 'model',
-                        'type': 'varchar(100)',
-                        'constraint': 'NOT NULL',
-                        'comment': 'Model name.'
-                    }
-                ],
-                'primary': 'id',
-                'comment': 'Ali API qwen model request record table.'
-            }
-
-        ]
+        tables = [DatabaseTableAliQwen]
+        DatabaseTableAliQwen._set_name(self.db_names['ali_qwen'])
 
         ## View stats.
         views_stats = [
-
-            ### 'stats'.
             {
-                'path': (self.db_names['api'], self.db_names['api.stats_ali_qwen']),
+                'path': self.db_names['stats_ali_qwen'],
                 'items': [
                     {
                         'name': 'count',
                         'select': (
                             'SELECT COUNT(1)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Request count.'
                     },
@@ -923,7 +862,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'past_day_count',
                         'select': (
                             'SELECT COUNT(1)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                             'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) = 0'
                         ),
                         'comment': 'Request count in the past day.'
@@ -932,7 +871,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'past_week_count',
                         'select': (
                             'SELECT COUNT(1)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                             'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) <= 6'
                         ),
                         'comment': 'Request count in the past week.'
@@ -941,7 +880,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'past_month_count',
                         'select': (
                             'SELECT COUNT(1)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                             'WHERE TIMESTAMPDIFF(DAY, `request_time`, NOW()) <= 29'
                         ),
                         'comment': 'Request count in the past month.'
@@ -950,7 +889,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'total_token',
                         'select': (
                             'SELECT FORMAT(SUM(`token_total`), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Usage total Token.'
                     },
@@ -958,7 +897,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'total_token_input',
                         'select': (
                             'SELECT FORMAT(SUM(`token_input`), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Usage input total Token.'
                     },
@@ -966,7 +905,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'total_token_output',
                         'select': (
                             'SELECT FORMAT(SUM(`token_output`), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Usage output total Token.'
                     },
@@ -974,7 +913,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'total_token_output_think',
                         'select': (
                             'SELECT FORMAT(SUM(`token_output_think`), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Usage output think total Token.'
                     },
@@ -982,7 +921,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'avg_token',
                         'select': (
                             'SELECT FORMAT(AVG(`token_total`), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Usage average Token.'
                     },
@@ -990,7 +929,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'avg_token_input',
                         'select': (
                             'SELECT FORMAT(AVG(`token_input`), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Usage input average Token.'
                     },
@@ -998,7 +937,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'avg_token_output',
                         'select': (
                             'SELECT FORMAT(AVG(`token_output`), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Usage output average Token.'
                     },
@@ -1006,7 +945,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'avg_token_output_think',
                         'select': (
                             'SELECT FORMAT(AVG(`token_output_think`), 0)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Usage output think average Token.'
                     },
@@ -1014,18 +953,16 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
                         'name': 'last_time',
                         'select': (
                             'SELECT MAX(`request_time`)\n'
-                            f'FROM `{self.db_names['api']}`.`{self.db_names['api.ali_qwen']}`'
+                            f'FROM `{self.db.database}`.`{self.db_names['ali_qwen']}`'
                         ),
                         'comment': 'Last record request time.'
                     }
                 ]
-
             }
-
         ]
 
         # Build.
-        self.database.build.build(databases, tables, views_stats=views_stats)
+        self.db.build.build(tables=tables, views_stats=views_stats, skip=True)
 
 
     def insert_db(self, record: ChatRecord) -> None:
