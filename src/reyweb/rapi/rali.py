@@ -61,6 +61,7 @@ class DatabaseTableAliQwen(rorm.Model, table=True):
     Database `ali_qwen` table model.
     """
 
+    __name__ = 'ali_qwen'
     __comment__ = 'Ali API qwen model request record table.'
     id: int = rorm.Field(rorm.types_mysql.INTEGER(unsigned=True), key_auto=True, comment='ID.')
     request_time: rorm.Datetime = rorm.Field(not_null=True, comment='Request time.')

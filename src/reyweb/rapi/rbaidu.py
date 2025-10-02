@@ -42,6 +42,7 @@ class DatabaseTableBaiduTrans(rorm.Model, table=True):
     Database `baidu_trans` table model.
     """
 
+    __name__ = 'baidu_trans'
     __comment__ = 'Baidu API translate request record table.'
     id: int = rorm.Field(rorm.types_mysql.INTEGER(unsigned=True), key_auto=True, comment='ID.')
     request_time: rorm.Datetime = rorm.Field(not_null=True, comment='Request time.')
