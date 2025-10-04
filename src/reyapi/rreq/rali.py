@@ -18,14 +18,14 @@ from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
 from reykit.rtime import now
 
-from ..rbase import API
-from .rdb import APIDatabaseBuild, APIDatabaseRecord
+from ..rbase import APIRequest
+from .rdb import APIReuqestDatabaseBuild, APIRequestDatabaseRecord
 
 
 __all__ = (
     'DatabaseTableAliQwen',
-    'APIAli',
-    'APIAliQwen'
+    'APIRequestAli',
+    'APIRequestAliQwen'
 )
 
 
@@ -77,15 +77,15 @@ class DatabaseTableAliQwen(rorm.Model, table=True):
     model: str = rorm.Field(rorm.types.VARCHAR(100), not_null=True, comment='Model name.')
 
 
-class APIAli(API):
+class APIRequestAli(APIRequest):
     """
-    Ali API type.
+    Reuqest Ali API type.
     """
 
 
-class APIAliQwen(APIAli, APIDatabaseBuild):
+class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
     """
-    Ali Ali QWen type.
+    Request Ali QWen API type.
     Can create database used `self.build_db` method.
 
     Attributes
@@ -142,7 +142,7 @@ class APIAliQwen(APIAli, APIDatabaseBuild):
         self.data: ChatRecordsData = {}
 
         # Database.
-        self.db_record = APIDatabaseRecord(self, 'api', 'ali_qwen')
+        self.db_record = APIRequestDatabaseRecord(self, 'api', 'ali_qwen')
 
 
     @overload

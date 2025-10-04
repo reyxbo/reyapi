@@ -14,18 +14,18 @@ from types import MethodType
 from threading import get_ident as threading_get_ident
 from reydb.rdb import Database
 
-from ..rbase import API
+from ..rbase import APIRequest
 
 
 __all__ = (
-    'APIDatabaseBuild',
-    'APIDatabaseRecord'
+    'APIReuqestDatabaseBuild',
+    'APIRequestDatabaseRecord'
 )
 
 
-class APIDatabaseBuild(API):
+class APIReuqestDatabaseBuild(APIRequest):
     """
-    External API with database build method type.
+    Reuqest external API with database build method type.
     Can create database used `self.build_db` method.
     """
 
@@ -34,15 +34,15 @@ class APIDatabaseBuild(API):
     build_db: MethodType
 
 
-class APIDatabaseRecord(API):
+class APIRequestDatabaseRecord(APIRequest):
     """
-    External API database record type, can multi threaded.
+    Request external API database record type, can multi threaded.
     """
 
 
     def __init__(
         self,
-        api: APIDatabaseBuild | None = None,
+        api: APIReuqestDatabaseBuild | None = None,
         database: str | None = None,
         table: str | None = None
     ) -> None:
