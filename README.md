@@ -1,9 +1,9 @@
-# reyapi
+# reyserver
 
 > Rey's Web method set.
 
 ## Install
 
 ```
-pip install reyapi
+pip install reyserver
 ```

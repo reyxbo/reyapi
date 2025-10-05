@@ -18,7 +18,7 @@ from reykit.rbase import throw
 from reykit.rnet import request as reykit_request
 from reykit.rtime import now
 
-from ..rbase import APIRequest
+from ..rbase import RequestAPI
 from .rdb import APIReuqestDatabaseBuild, APIRequestDatabaseRecord
 
 
@@ -77,7 +77,7 @@ class DatabaseTableAliQwen(rorm.Model, table=True):
     model: str = rorm.Field(rorm.types.VARCHAR(100), not_null=True, comment='Model name.')
 
 
-class APIRequestAli(APIRequest):
+class APIRequestAli(RequestAPI):
     """
     Reuqest Ali API type.
     """
@@ -165,7 +165,7 @@ class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
         Response json or iterable.
         """
 
-        # Set parameter.
+        # Parameter.
         json['model'] = self.model
         json_params = json.setdefault('parameters', {})
         json_params_temperature = self.rand * 2
@@ -385,7 +385,7 @@ class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
             Generator.
             """
 
-            # Set parameter.
+            # Parameter.
             nonlocal is_think_emptied
             chat_record_reply['content'] = chat_record_reply['content'] or ''
             chat_record_reply['think'] = chat_record_reply['think'] or ''
@@ -486,7 +486,7 @@ class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
             - `None`: Use `self.history_max_time`.
         """
 
-        # Set parameter.
+        # Parameter.
         if type(records) == str:
             records = [{'content': records}]
         elif type(records) == dict:
@@ -548,7 +548,7 @@ class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
         Chat records.
         """
 
-        # Set parameter.
+        # Parameter.
         now_timestamp = now('timestamp')
         chat_records_history: ChatRecords = self.data.setdefault(index, [])
 
@@ -692,7 +692,7 @@ class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
         if think and not stream:
             throw(ValueError, think, stream)
 
-        # Set parameter.
+        # Parameter.
         if (
             system is not None
             and self.system is not None
@@ -822,7 +822,7 @@ class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
         Polished text.
         """
 
-        # Set parameter.
+        # Parameter.
         text = '润色冒号后的内容（注意！只返回润色后的内容正文，之后会直接整段使用）：' + text
         record = self.chat(text)
         result: str = record['content']
@@ -840,7 +840,7 @@ class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
         if self.db is None:
             throw(ValueError, self.db)
 
-        # Set parameter.
+        # Parameter.
 
         ## Table.
         tables = [DatabaseTableAliQwen]
@@ -975,7 +975,7 @@ class APIRequestAliQwen(APIRequestAli, APIReuqestDatabaseBuild):
         record : Record data.
         """
 
-        # Set parameter.
+        # Parameter.
         self.db_record['reply'] = record['content']
         self.db_record['think'] = record['think']
         self.db_record['web'] = record['web']

@@ -1,11 +1,11 @@
 [project]
-name = "reyapi"
+name = "reyserver"
 version = "1.1.35"
 description = "API method set."
 readme = "README.md"
 requires-python = ">=3.12"
 license = {file = "LICENSE"}
-keywords = ["rey", "reyxbo", "api", "backend", "async", "asynchrouous"]
+keywords = ["rey", "reyxbo", "api", "backend", "async", "asynchronous"]
 authors = [
     {name = "Rey", email = "reyxbo@163.com"}
 ]
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/reyxbo/reyapi/"
+homepage = "https://github.com/reyxbo/reyserver/"
 
 [build-system]
 requires = ["hatchling"]
@@ -23,7 +23,7 @@ build-backend = "hatchling.build"
 [tool.uv.workspace]
 members = [
     "python-multipart",
-    "reyapi",
+    "reyserver",
     "sqlalchemy",
     "sqlmodel",
     "uvicorn[standard]"

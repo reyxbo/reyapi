@@ -20,7 +20,7 @@ from reykit.rrand import randn
 from reykit.rtext import is_zh
 from reykit.rtime import now
 
-from ..rbase import APIRequest
+from ..rbase import RequestAPI
 from .rdb import APIReuqestDatabaseBuild, APIRequestDatabaseRecord
 
 
@@ -53,7 +53,7 @@ class DatabaseTableBaiduTrans(rorm.Model, table=True):
     output_lang: str = rorm.Field(rorm.types.VARCHAR(3), not_null=True, comment='Output translation text language.')
 
 
-class APIRequestBaidu(APIRequest):
+class APIRequestBaidu(RequestAPI):
     """
     Request Baidu API type.
     """
@@ -172,7 +172,7 @@ class APIRequestBaiduTranslate(APIRequestBaidu, APIReuqestDatabaseBuild):
         if text == '':
             throw(ValueError, text)
 
-        # Set parameter.
+        # Parameter.
         num_str = str(num)
 
         # Sign.
@@ -209,7 +209,7 @@ class APIRequestBaiduTranslate(APIRequestBaidu, APIReuqestDatabaseBuild):
         Response dictionary.
         """
 
-        # Set parameter.
+        # Parameter.
         rand_num = randn(32768, 65536)
         sign = self.sign(text, rand_num)
         params = {
@@ -295,7 +295,7 @@ class APIRequestBaiduTranslate(APIRequestBaidu, APIReuqestDatabaseBuild):
         if len(text) > self.max_len:
             throw(AssertionError, self.max_len, text_len)
 
-        # Set parameter.
+        # Parameter.
         text = text.strip()
         if from_lang is None:
             from_lang = self.get_lang(text)
@@ -338,7 +338,7 @@ class APIRequestBaiduTranslate(APIRequestBaidu, APIReuqestDatabaseBuild):
         if self.db is None:
             throw(ValueError, self.db)
 
-        # Set parameter.
+        # Parameter.
 
         ## Table.
         tables = [DatabaseTableBaiduTrans]
