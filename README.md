@@ -1,6 +1,6 @@
 # reyserver
 
-> Rey's Web method set.
+> Backend server method set.
 
 ## Install
 

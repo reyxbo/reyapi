@@ -14,17 +14,10 @@ from reykit.rbase import Base
 
 __all__ = (
     'ServerBase',
-    'RequestAPI'
 )
 
 
 class ServerBase(Base):
     """
     Server base type.
-    """
-
-
-class RequestAPI(ServerBase):
-    """
-    Request API type.
     """

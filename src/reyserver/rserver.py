@@ -5,7 +5,7 @@
 @Time    : 2025-10-05 00:55:28
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : APP methods.
+@Explain : Server methods.
 """
 
 
