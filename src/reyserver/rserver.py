@@ -11,29 +11,19 @@
 
 from typing import Literal
 from collections.abc import Sequence, Callable, Coroutine
-from types import CoroutineType
-from inspect import iscoroutinefunction, iscoroutine
-from fastapi import FastAPI, Depends as get_depends
-from fastapi.params import Depends
-# from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.staticfiles import StaticFiles
 from uvicorn import run as uvicorn_run
-from fastapi.responses import HTMLResponse
-from reykit.ros import File, Folder
-from reykit.rbase import CoroutineFunction
+from reykit.rbase import CoroutineFunctionSimple
 
 from .rbase import ServerBase
+from .rfile import ServerAPIFile
 
 
 __all__ = (
     'Server',
 )
-
-
-type CoroutineFunction = Callable[[], Coroutine]
 
 
 class Server(ServerBase):
@@ -46,9 +36,9 @@ class Server(ServerBase):
     def __init__(
         self,
         public: str | None = None,
-        depend: CoroutineFunction | Sequence[CoroutineFunction] | None = None,
-        before: CoroutineFunction | Sequence[CoroutineFunction] | None = None,
-        after: CoroutineFunction | Sequence[CoroutineFunction] | None = None,
+        depend: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
+        before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
+        after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
         ssl_cert: str | None = None,
         ssl_key: str | None = None,
     ) -> None:

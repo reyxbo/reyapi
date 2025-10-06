@@ -11,5 +11,6 @@ Modules
 -------
 rall : All methods.
 rbase : Base methods.
+rfile : File methods.
 rserver : Server methods.
 """
