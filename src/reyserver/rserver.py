@@ -18,7 +18,6 @@ from uvicorn import run as uvicorn_run
 from reykit.rbase import CoroutineFunctionSimple
 
 from .rbase import ServerBase
-from .rfile import ServerAPIFile
 
 
 __all__ = (

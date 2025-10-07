@@ -30,7 +30,7 @@ file_router = APIRouter()
 
 class DatabaseORMTableInfo(rorm.Model, table=True):
     """
-    Database `info` table model.
+    Database `info` table ORM model.
     """
 
     __name__ = 'info'
@@ -44,7 +44,7 @@ class DatabaseORMTableInfo(rorm.Model, table=True):
 
 class DatabaseORMTableData(rorm.Model, table=True):
     """
-    Database `data` table model.
+    Database `data` table ORM model.
     """
 
     __name__ = 'data'
