@@ -10,8 +10,7 @@
 
 
 from fastapi import APIRouter
-from reydb import rorm
-from reydb.rdb import DatabaseAsync
+from reydb import rorm, DatabaseAsync
 
 from . import rserver
 from .rbase import ServerAPI

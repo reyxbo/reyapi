@@ -99,26 +99,4 @@ class Server(ServerBase):
         )
 
 
-    # def add_api_all(self) -> None:
-    #     """
-    #     Add all API.
-    #     """
-
-    #     self.add_api_all()
-
-
-    # def add_api_base(self):
-
-    #     # @self.app.get('/')
-    #     # def index():
-    #     #     file_bytes = File(self.index).bytes
-    #     #     response = HTMLResponse(file_bytes)
-    #     #     return response
-
-
-    #     @self.app.get('/test')
-    #     def test():
-    #         return {'message': 'test'}
-
-
     def add_api_file(self): ...
