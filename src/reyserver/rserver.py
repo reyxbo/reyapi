@@ -19,7 +19,8 @@ from uvicorn import run as uvicorn_run
 from contextlib import asynccontextmanager
 from reykit.rbase import CoroutineFunctionSimple
 
-from .rbase import ServerBase, generate_lifespan
+from .rbase import ServerBase, create_lifespan
+from .rfile import ServerAPIFile
 
 
 __all__ = (
@@ -57,11 +58,13 @@ class Server(ServerBase):
         # Parameter.
         if type(ssl_cert) != type(ssl_key):
             raise
-        lifespan = generate_lifespan(before, after)
-        if iscoroutinefunction(depend):
+        lifespan = create_lifespan(before, after)
+        if depend is None:
+            depend = ()
+        elif iscoroutinefunction(depend):
             depend = (depend,)
-        dependencies = [
-            Depends(depend)
+        depend = [
+            Depends(task)
             for task in depend
         ]
 
@@ -71,8 +74,9 @@ class Server(ServerBase):
 
         ## App.
         self.app = FastAPI(
-            dependencies=dependencies,
-            lifespan=lifespan
+            dependencies=depend,
+            lifespan=lifespan,
+            debug=True
         )
 
         ## Static.
@@ -81,7 +85,7 @@ class Server(ServerBase):
             self.app.mount('/', subapp)
 
         ## Middleware.
-        self.app.add_middleware(GZipMiddleware)
+        # self.app.add_middleware(GZipMiddleware)
         # self.app.add_middleware(TrustedHostMiddleware)
         # self.app.add_middleware(HTTPSRedirectMiddleware)
 
@@ -99,4 +103,14 @@ class Server(ServerBase):
         )
 
 
-    def add_api_file(self): ...
+    def add_api_base(self):
+
+        @self.app.get('/test')
+        async def test():
+            return {'message': 'test'}
+
+
+    def add_api_file(self, db):
+
+        api = ServerAPIFile(db)
+        self.app.include_router(api.router, prefix='/file')

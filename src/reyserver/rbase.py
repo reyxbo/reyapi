@@ -12,14 +12,18 @@
 from typing import Sequence
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+
+from reydb import DatabaseAsync
+from reydb.rconn import DatabaseConnectionAsync
+from reydb.rorm import DatabaseORMSessionAsync
 from reykit.rbase import CoroutineFunctionSimple, Base, is_iterable
 
 
 __all__ = (
     'ServerBase',
     'ServerAPI',
-    'generate_lifespan'
+    'create_lifespan'
 )
 
 
@@ -35,12 +39,12 @@ class ServerAPI(ServerBase):
     """
 
 
-def generate_lifespan(
+def create_lifespan(
     before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
     after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
 ):
     """
-    Generate function of lifespan manager.
+    Create function of lifespan manager.
 
     Parameters
     ----------
@@ -58,7 +62,7 @@ def generate_lifespan(
     elif iscoroutinefunction(after):
         after = (after,)
 
-    # Define.
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         """
@@ -80,3 +84,36 @@ def generate_lifespan(
 
 
     return lifespan
+
+
+# def create_depend_conn(db: DatabaseAsync):
+#     """
+#     Create dependencie function of asynchronous database connection.
+
+#     Parameters
+#     ----------
+#     db : Asynchronous database instance.
+#     """
+
+
+#     @asynccontextmanager
+#     async def lifespan(app: FastAPI):
+#         """
+#         Server lifespan manager.
+
+#         Parameters
+#         ----------
+#         app : Server APP.
+#         """
+
+#         # Before.
+#         for task in before:
+#             await task()
+#         yield
+
+#         # After.
+#         for task in after:
+#             await after()
+
+
+#     return lifespan

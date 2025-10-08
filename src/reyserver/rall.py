@@ -10,5 +10,6 @@
 
 
 from .rbase import *
+from .rclient import *
 from .rfile import *
 from .rserver import *
