@@ -11,16 +11,16 @@
 
 from typing import Annotated
 from fastapi import APIRouter, Form, File, UploadFile, Depends
-from reydb import rorm, DatabaseEngineAsync
+from reydb import rorm
 from reykit.ros import FileStore, get_md5
 
-from .rbase import ServerAPI
+from .rbase import ServerConfig, create_depend_sess
 
 
 __all__ = (
     'DatabaseORMTableInfo',
     'DatabaseORMTableData',
-    'ServerAPIFile'
+    'build_file_db'
 )
 
 
@@ -50,232 +50,179 @@ class DatabaseORMTableData(rorm.Model, table=True):
     path: str = rorm.Field(rorm.types.VARCHAR(4095), not_null=True, comment='File disk storage path.')
 
 
-class ServerAPIFile(ServerAPI):
+file_router = APIRouter()
+depend_sess_file = create_depend_sess('file')
+
+
+@file_router.post('/upload')
+async def upload(
+    file: Annotated[UploadFile, File()],
+    note: Annotated[str, Form()],
+    sess: Annotated[rorm.DatabaseORMSessionAsync, Depends(depend_sess_file)]
+):
     """
-    Server File API type.
-    Can create database used `self.build_db` method.
+    Upload file.
+
+    Parameters
+    ----------
+    file : File instance.
+    note : File note.
+    sess : Asynchronous database session.
     """
 
+    # Handle parameter.
+    file_store = FileStore(ServerConfig.server.api_file_dir)
+    file_name = file.filename
+    file_bytes = await file.read()
+    file_md5 = get_md5(file_bytes)
+    file_size = len(file_bytes)
 
-    def __init__(
-        self,
-        db_engine: DatabaseEngineAsync,
-        path: str = 'file'
-    ) -> None:
-        """
-        Build instance attributes.
+    # Upload.
+    file_path = file_store.index(file_md5)
 
-        Parameters
-        ----------
-        db_engine : Asynchronous database instance.
-        path: File store directory.
-        """
+    ## Data.
+    if file_path is None:
+        file_path = file_store.store(file_bytes)
+        table_data = DatabaseORMTableData(
+            md5=file_md5,
+            size=file_size,
+            path=file_path
+        )
+        await sess.add(table_data)
 
-        # Build.
-        self.db_engine = db_engine
-        self.path = path
+    ## Information.
+    table_info = DatabaseORMTableInfo(
+        md5=file_md5,
+        name=file_name,
+        note=note
+    )
+    await sess.add(table_info)
 
-        ## Router.
-        self.router = self.__create_router()
+    # Get ID.
+    await sess.flush()
+    file_id = table_info.file_id
 
-        ## Build Database.
-        self.build_db()
-
-
-    async def depend_sess(self):
-        """
-        Dependencie function of asynchronous database session.
-        """
-
-        # Context.
-        async with self.db_engine.orm.session() as sess:
-            yield sess
-
-
-    def __create_router(self) -> APIRouter:
-        """
-        Add APIs to router.
-
-        Returns
-        -------
-        Router.
-        """
-
-        # Parameter.
-        router = APIRouter()
+    return {'file_id': file_id}
 
 
-        @router.post('/upload')
-        async def upload(
-            file: Annotated[UploadFile, File()],
-            note: Annotated[str, Form()],
-            sess: Annotated[rorm.DatabaseORMSessionAsync, Depends(self.depend_sess)]
-        ):
-            """
-            Upload file.
+def build_file_db(self) -> None:
+    """
+    Check and build `file` database tables.
+    """
 
-            Parameters
-            ----------
-            file : File instance.
-            note : File note.
-            sess : Asynchronous database session.
-            """
+    # Set parameter.
+    engine = ServerConfig.server.db.file
+    database = engine.database
 
-            # Handle parameter.
-            file_store = FileStore(self.path)
-            file_name = file.filename
-            file_bytes = await file.read()
-            file_md5 = get_md5(file_bytes)
-            file_size = len(file_bytes)
+    ## Table.
+    tables = [DatabaseORMTableInfo, DatabaseORMTableData]
 
-            # Upload.
-            file_path = file_store.index(file_md5)
-
-            ## Data.
-            if file_path is None:
-                file_path = file_store.store(file_bytes)
-                table_data = DatabaseORMTableData(
-                    md5=file_md5,
-                    size=file_size,
-                    path=file_path
-                )
-                await sess.add(table_data)
-
-            ## Information.
-            table_info = DatabaseORMTableInfo(
-                md5=file_md5,
-                name=file_name,
-                note=note
+    ## View.
+    views = [
+        {
+            'path': 'data_info',
+            'select': (
+                'SELECT `b`.`last_time`, `a`.`md5`, `a`.`size`, `b`.`names`, `b`.`notes`\n'
+                f'FROM `{database}`.`data` AS `a`\n'
+                'LEFT JOIN (\n'
+                '    SELECT\n'
+                '        `md5`,\n'
+                "        GROUP_CONCAT(DISTINCT(`name`) ORDER BY `create_time` DESC SEPARATOR ' | ') AS `names`,\n"
+                "        GROUP_CONCAT(DISTINCT(`note`) ORDER BY `create_time` DESC SEPARATOR ' | ') AS `notes`,\n"
+                '        MAX(`create_time`) as `last_time`\n'
+                f'    FROM `{database}`.`info`\n'
+                '    GROUP BY `md5`\n'
+                '    ORDER BY `last_time` DESC\n'
+                ') AS `b`\n'
+                'ON `a`.`md5` = `b`.`md5`\n'
+                'ORDER BY `last_time` DESC'
             )
-            await sess.add(table_info)
+        }
+    ]
 
-            # Get ID.
-            await sess.flush()
-            file_id = table_info.file_id
+    ## View stats.
+    views_stats = [
+        {
+            'path': 'stats',
+            'items': [
+                {
+                    'name': 'count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        f'FROM `{database}`.`info`'
+                    ),
+                    'comment': 'File information count.'
+                },
+                {
+                    'name': 'past_day_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        f'FROM `{database}`.`info`\n'
+                        'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) = 0'
+                    ),
+                    'comment': 'File information count in the past day.'
+                },
+                {
+                    'name': 'past_week_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        f'FROM `{database}`.`info`\n'
+                        'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) <= 6'
+                    ),
+                    'comment': 'File information count in the past week.'
+                },
+                {
+                    'name': 'past_month_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        f'FROM `{database}`.`info`\n'
+                        'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) <= 29'
+                    ),
+                    'comment': 'File information count in the past month.'
+                },
+                {
+                    'name': 'data_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        f'FROM `{database}`.`data`'
+                    ),
+                    'comment': 'File data unique count.'
+                },
+                {
+                    'name': 'total_size',
+                    'select': (
+                        'SELECT FORMAT(SUM(`size`), 0)\n'
+                        f'FROM `{database}`.`data`'
+                    ),
+                    'comment': 'File total byte size.'
+                },
+                {
+                    'name': 'avg_size',
+                    'select': (
+                        'SELECT FORMAT(AVG(`size`), 0)\n'
+                        f'FROM `{database}`.`data`'
+                    ),
+                    'comment': 'File average byte size.'
+                },
+                {
+                    'name': 'max_size',
+                    'select': (
+                        'SELECT FORMAT(MAX(`size`), 0)\n'
+                        f'FROM `{database}`.`data`'
+                    ),
+                    'comment': 'File maximum byte size.'
+                },
+                {
+                    'name': 'last_time',
+                    'select': (
+                        'SELECT MAX(`create_time`)\n'
+                        f'FROM `{database}`.`info`'
+                    ),
+                    'comment': 'File last record create time.'
+                }
+            ]
+        }
+    ]
 
-            return {'file_id': file_id}
-
-
-        return router
-
-
-    def build_db(self) -> None:
-        """
-        Check and build database tables.
-        """
-
-        # Set parameter.
-        database = self.db_engine.database
-
-        ## Table.
-        tables = [DatabaseORMTableInfo, DatabaseORMTableData]
-
-        ## View.
-        views = [
-            {
-                'path': 'data_info',
-                'select': (
-                    'SELECT `b`.`last_time`, `a`.`md5`, `a`.`size`, `b`.`names`, `b`.`notes`\n'
-                    f'FROM `{database}`.`data` AS `a`\n'
-                    'LEFT JOIN (\n'
-                    '    SELECT\n'
-                    '        `md5`,\n'
-                    "        GROUP_CONCAT(DISTINCT(`name`) ORDER BY `create_time` DESC SEPARATOR ' | ') AS `names`,\n"
-                    "        GROUP_CONCAT(DISTINCT(`note`) ORDER BY `create_time` DESC SEPARATOR ' | ') AS `notes`,\n"
-                    '        MAX(`create_time`) as `last_time`\n'
-                    f'    FROM `{database}`.`info`\n'
-                    '    GROUP BY `md5`\n'
-                    '    ORDER BY `last_time` DESC\n'
-                    ') AS `b`\n'
-                    'ON `a`.`md5` = `b`.`md5`\n'
-                    'ORDER BY `last_time` DESC'
-                )
-            }
-        ]
-
-        ## View stats.
-        views_stats = [
-            {
-                'path': 'stats',
-                'items': [
-                    {
-                        'name': 'count',
-                        'select': (
-                            'SELECT COUNT(1)\n'
-                            f'FROM `{database}`.`info`'
-                        ),
-                        'comment': 'File information count.'
-                    },
-                    {
-                        'name': 'past_day_count',
-                        'select': (
-                            'SELECT COUNT(1)\n'
-                            f'FROM `{database}`.`info`\n'
-                            'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) = 0'
-                        ),
-                        'comment': 'File information count in the past day.'
-                    },
-                    {
-                        'name': 'past_week_count',
-                        'select': (
-                            'SELECT COUNT(1)\n'
-                            f'FROM `{database}`.`info`\n'
-                            'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) <= 6'
-                        ),
-                        'comment': 'File information count in the past week.'
-                    },
-                    {
-                        'name': 'past_month_count',
-                        'select': (
-                            'SELECT COUNT(1)\n'
-                            f'FROM `{database}`.`info`\n'
-                            'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) <= 29'
-                        ),
-                        'comment': 'File information count in the past month.'
-                    },
-                    {
-                        'name': 'data_count',
-                        'select': (
-                            'SELECT COUNT(1)\n'
-                            f'FROM `{database}`.`data`'
-                        ),
-                        'comment': 'File data unique count.'
-                    },
-                    {
-                        'name': 'total_size',
-                        'select': (
-                            'SELECT FORMAT(SUM(`size`), 0)\n'
-                            f'FROM `{database}`.`data`'
-                        ),
-                        'comment': 'File total byte size.'
-                    },
-                    {
-                        'name': 'avg_size',
-                        'select': (
-                            'SELECT FORMAT(AVG(`size`), 0)\n'
-                            f'FROM `{database}`.`data`'
-                        ),
-                        'comment': 'File average byte size.'
-                    },
-                    {
-                        'name': 'max_size',
-                        'select': (
-                            'SELECT FORMAT(MAX(`size`), 0)\n'
-                            f'FROM `{database}`.`data`'
-                        ),
-                        'comment': 'File maximum byte size.'
-                    },
-                    {
-                        'name': 'last_time',
-                        'select': (
-                            'SELECT MAX(`create_time`)\n'
-                            f'FROM `{database}`.`info`'
-                        ),
-                        'comment': 'File last record create time.'
-                    }
-                ]
-            }
-        ]
-
-        # Build.
-        self.db_engine.sync_database.build.build(tables=tables, views=views, views_stats=views_stats, skip=True)
+    # Build.
+    engine.sync_engine.build.build(tables=tables, views=views, views_stats=views_stats, skip=True)

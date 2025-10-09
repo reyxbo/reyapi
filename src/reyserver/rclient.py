@@ -9,7 +9,7 @@
 """
 
 
-from rbase import ServerBase
+from .rbase import ServerBase
 
 
 __all__ = (

@@ -12,18 +12,18 @@
 from typing import Sequence
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
+from reydb import DatabaseAsync
+from reykit.rbase import CoroutineFunctionSimple, Base, ConfigMeta, throw
 
-from reydb import DatabaseEngineAsync
-from reydb.rconn import DatabaseConnectionAsync
-from reydb.rorm import DatabaseORMSessionAsync
-from reykit.rbase import CoroutineFunctionSimple, Base, is_iterable
+import rserver
 
 
 __all__ = (
     'ServerBase',
-    'ServerAPI',
-    'create_lifespan'
+    'ServerConfig',
+    'create_lifespan',
+    'create_depend_sess'
 )
 
 
@@ -33,10 +33,13 @@ class ServerBase(Base):
     """
 
 
-class ServerAPI(ServerBase):
+class ServerConfig(ServerBase, metaclass=ConfigMeta):
     """
-    Server API type.
+    Config type.
     """
+
+    server: 'rserver.Server'
+    'Server instance.'
 
 
 def create_lifespan(
@@ -86,34 +89,31 @@ def create_lifespan(
     return lifespan
 
 
-# def create_depend_conn(db: DatabaseEngineAsync):
-#     """
-#     Create dependencie function of asynchronous database connection.
+def create_depend_sess(database: str):
+    """
+    Create dependencie function of asynchronous database session.
 
-#     Parameters
-#     ----------
-#     db : Asynchronous database instance.
-#     """
+    Parameters
+    ----------
+    database : Database name.
 
-
-#     @asynccontextmanager
-#     async def lifespan(app: FastAPI):
-#         """
-#         Server lifespan manager.
-
-#         Parameters
-#         ----------
-#         app : Server APP.
-#         """
-
-#         # Before.
-#         for task in before:
-#             await task()
-#         yield
-
-#         # After.
-#         for task in after:
-#             await after()
+    Returns
+    -------
+    Dependencie function.
+    """
 
 
-#     return lifespan
+    async def depend_sess():
+        """
+        Dependencie function of asynchronous database session.
+        """
+
+        # Parameter.
+        engine = ServerConfig.server.db[database]
+
+        # Context.
+        async with engine.orm.session() as sess:
+            yield sess
+
+
+    return depend_sess

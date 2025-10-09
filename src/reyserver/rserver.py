@@ -9,18 +9,15 @@
 """
 
 
-from typing import Literal
+from collections.abc import Sequence
 from inspect import iscoroutinefunction
-from collections.abc import Sequence, Callable, Coroutine
-from fastapi import FastAPI, Depends
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.staticfiles import StaticFiles
 from uvicorn import run as uvicorn_run
-from contextlib import asynccontextmanager
-from reykit.rbase import CoroutineFunctionSimple
+from fastapi import FastAPI, Depends
+from fastapi.staticfiles import StaticFiles
+from reydb import DatabaseAsync
+from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
 
-from .rbase import ServerBase, create_lifespan
-from .rfile import ServerAPIFile
+from .rbase import ServerBase, ServerConfig, create_lifespan
 
 
 __all__ = (
@@ -28,15 +25,17 @@ __all__ = (
 )
 
 
-class Server(ServerBase):
+class Server(ServerBase, Singleton):
     """
-    Server type.
+    Server type, singleton mode.
     Based on `fastapi` and `uvicorn` package.
+    Can view document api '/docs', '/redoc', '/openapi.json'.
     """
 
 
     def __init__(
         self,
+        db: DatabaseAsync,
         public: str | None = None,
         depend: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
         before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
@@ -49,15 +48,18 @@ class Server(ServerBase):
 
         Parameters
         ----------
+        db : Asynchronous database.
         public : Public directory.
         depend : Global api dependencies.
         before : Execute before server start.
         after : Execute after server end.
+        ssl_cert : SSL certificate file path.
+        ssl_key : SSL key file path.
         """
 
         # Parameter.
         if type(ssl_cert) != type(ssl_key):
-            raise
+            throw(AssertionError, ssl_cert, ssl_key)
         lifespan = create_lifespan(before, after)
         if depend is None:
             depend = ()
@@ -69,6 +71,8 @@ class Server(ServerBase):
         ]
 
         # Build.
+        ServerConfig.server = self
+        self.db = db
         self.ssl_cert = ssl_cert
         self.ssl_key = ssl_key
 
@@ -84,15 +88,15 @@ class Server(ServerBase):
             subapp = StaticFiles(directory=public, html=True)
             self.app.mount('/', subapp)
 
-        ## Middleware.
-        # self.app.add_middleware(GZipMiddleware)
-        # self.app.add_middleware(TrustedHostMiddleware)
-        # self.app.add_middleware(HTTPSRedirectMiddleware)
+        ## API.
+
+        ### File.
+        self.api_file_dir: str
 
 
     def run(self) -> None:
         """
-        Run.
+        Run server.
         """
 
         # Run.
@@ -110,7 +114,21 @@ class Server(ServerBase):
             return {'message': 'test'}
 
 
-    def add_api_file(self, db):
+    def add_api_file(self, file_dir: str = 'file', prefix='/file') -> None:
+        """
+        Add file API.
 
-        api = ServerAPIFile(db)
-        self.app.include_router(api.router, prefix='/file')
+        Parameters
+        ----------
+        file_dir : File API store directory path.
+        prefix : File API path prefix.
+        """
+
+        from .rfile import file_router, build_file_db
+
+        # Build database.
+        build_file_db()
+
+        # Add.
+        self.api_file_dir = file_dir
+        self.app.include_router(file_router, prefix=prefix)
