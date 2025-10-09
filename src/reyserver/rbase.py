@@ -13,10 +13,9 @@ from typing import Sequence
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from reydb import DatabaseAsync
-from reykit.rbase import CoroutineFunctionSimple, Base, ConfigMeta, throw
+from reykit.rbase import CoroutineFunctionSimple, Base, ConfigMeta
 
-import rserver
+from . import rserver
 
 
 __all__ = (

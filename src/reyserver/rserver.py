@@ -80,7 +80,7 @@ class Server(ServerBase, Singleton):
         self.app = FastAPI(
             dependencies=depend,
             lifespan=lifespan,
-            debug=True
+            # debug=True
         )
 
         ## Static.
@@ -114,7 +114,7 @@ class Server(ServerBase, Singleton):
             return {'message': 'test'}
 
 
-    def add_api_file(self, file_dir: str = 'file', prefix='/file') -> None:
+    def add_api_file(self, file_dir: str = 'file') -> None:
         """
         Add file API.
 
@@ -131,4 +131,4 @@ class Server(ServerBase, Singleton):
 
         # Add.
         self.api_file_dir = file_dir
-        self.app.include_router(file_router, prefix=prefix)
+        self.app.include_router(file_router, prefix='/file')

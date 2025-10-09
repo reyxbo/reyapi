@@ -57,6 +57,7 @@ depend_sess_file = create_depend_sess('file')
 @file_router.post('/upload')
 async def upload(
     file: Annotated[UploadFile, File()],
+    name: Annotated[str, Form()],
     note: Annotated[str, Form()],
     sess: Annotated[rorm.DatabaseORMSessionAsync, Depends(depend_sess_file)]
 ):
@@ -72,7 +73,6 @@ async def upload(
 
     # Handle parameter.
     file_store = FileStore(ServerConfig.server.api_file_dir)
-    file_name = file.filename
     file_bytes = await file.read()
     file_md5 = get_md5(file_bytes)
     file_size = len(file_bytes)
@@ -93,7 +93,7 @@ async def upload(
     ## Information.
     table_info = DatabaseORMTableInfo(
         md5=file_md5,
-        name=file_name,
+        name=name,
         note=note
     )
     await sess.add(table_info)
@@ -105,7 +105,7 @@ async def upload(
     return {'file_id': file_id}
 
 
-def build_file_db(self) -> None:
+def build_file_db() -> None:
     """
     Check and build `file` database tables.
     """
