@@ -80,7 +80,7 @@ class Server(ServerBase, Singleton):
         self.app = FastAPI(
             dependencies=depend,
             lifespan=lifespan,
-            # debug=True
+            debug=True
         )
 
         ## Static.
@@ -131,4 +131,4 @@ class Server(ServerBase, Singleton):
 
         # Add.
         self.api_file_dir = file_dir
-        self.app.include_router(file_router, prefix='/file')
+        self.app.include_router(file_router, prefix='/files', tags=['file'])

@@ -9,11 +9,11 @@
 """
 
 
-from typing import Sequence
+from typing import Sequence, Literal
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from reykit.rbase import CoroutineFunctionSimple, Base, ConfigMeta
+from fastapi import FastAPI, HTTPException, status
+from reykit.rbase import CoroutineFunctionSimple, Base, ConfigMeta, Exit
 
 from . import rserver
 
@@ -21,6 +21,9 @@ from . import rserver
 __all__ = (
     'ServerBase',
     'ServerConfig',
+    'ServerExit',
+    'ServerExitHTTP',
+    'ServerExitHTTP404',
     'create_lifespan',
     'create_depend_sess'
 )
@@ -39,6 +42,41 @@ class ServerConfig(ServerBase, metaclass=ConfigMeta):
 
     server: 'rserver.Server'
     'Server instance.'
+
+
+class ServerExit(ServerBase, Exit):
+    """
+    Server exit type.
+    """
+
+
+class ServerExitHTTP(ServerExit, HTTPException):
+    """
+    Server HTTP exit type.
+    """
+
+    status_code: int
+
+
+    def __init__(self, text: str | None = None):
+        """
+        Build instance attributes.
+
+        Parameters
+        ----------
+        text : Explain text.
+        """
+
+        # Super.
+        super().__init__(self.status_code, text)
+
+
+class ServerExitHTTP404(ServerExitHTTP):
+    """
+    Server HTTP 404 exit type.
+    """
+
+    status_code = status.HTTP_404_NOT_FOUND
 
 
 def create_lifespan(
@@ -88,13 +126,16 @@ def create_lifespan(
     return lifespan
 
 
-def create_depend_sess(database: str):
+def create_depend_db(database: str, mode: Literal['sess', 'conn']):
     """
-    Create dependencie function of asynchronous database session.
+    Create dependencie function of asynchronous database.
 
     Parameters
     ----------
     database : Database name.
+    mode : Mode.
+        - `Literl['sess']`: Create ORM session instance.
+        - `Literl['conn']`: Create connection instance.
 
     Returns
     -------
@@ -102,17 +143,21 @@ def create_depend_sess(database: str):
     """
 
 
-    async def depend_sess():
+    async def depend():
         """
-        Dependencie function of asynchronous database session.
+        Dependencie function of asynchronous database.
         """
 
         # Parameter.
         engine = ServerConfig.server.db[database]
 
         # Context.
-        async with engine.orm.session() as sess:
-            yield sess
+        if mode == 'sess':
+            async with engine.orm.session() as sess:
+                yield sess
+        elif mode == 'conn':
+            async with engine.connect() as conn:
+                yield conn
 
 
-    return depend_sess
+    return depend

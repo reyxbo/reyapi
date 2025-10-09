@@ -9,18 +9,28 @@
 """
 
 
-from typing import Annotated
-from fastapi import APIRouter, Form, File, UploadFile, Depends
+from fastapi import (
+    APIRouter,
+    Depends,
+    Path,
+    Form,
+    File,
+    UploadFile
+)
+from fastapi.responses import FileResponse
 from reydb import rorm
+from reydb.rorm import DatabaseORMSessionAsync
+from reydb.rconn import DatabaseConnectionAsync
 from reykit.ros import FileStore, get_md5
 
-from .rbase import ServerConfig, create_depend_sess
+from .rbase import ServerConfig, ServerExitHTTP404, create_depend_db
 
 
 __all__ = (
     'DatabaseORMTableInfo',
     'DatabaseORMTableData',
-    'build_file_db'
+    'build_file_db',
+    'file_router'
 )
 
 
@@ -48,61 +58,6 @@ class DatabaseORMTableData(rorm.Model, table=True):
     md5: str = rorm.Field(rorm.types.CHAR(32), key=True, comment='File MD5.')
     size: int = rorm.Field(rorm.types_mysql.INTEGER(unsigned=True), not_null=True, comment='File bytes size.')
     path: str = rorm.Field(rorm.types.VARCHAR(4095), not_null=True, comment='File disk storage path.')
-
-
-file_router = APIRouter()
-depend_sess_file = create_depend_sess('file')
-
-
-@file_router.post('/upload')
-async def upload(
-    file: Annotated[UploadFile, File()],
-    name: Annotated[str, Form()],
-    note: Annotated[str, Form()],
-    sess: Annotated[rorm.DatabaseORMSessionAsync, Depends(depend_sess_file)]
-):
-    """
-    Upload file.
-
-    Parameters
-    ----------
-    file : File instance.
-    note : File note.
-    sess : Asynchronous database session.
-    """
-
-    # Handle parameter.
-    file_store = FileStore(ServerConfig.server.api_file_dir)
-    file_bytes = await file.read()
-    file_md5 = get_md5(file_bytes)
-    file_size = len(file_bytes)
-
-    # Upload.
-    file_path = file_store.index(file_md5)
-
-    ## Data.
-    if file_path is None:
-        file_path = file_store.store(file_bytes)
-        table_data = DatabaseORMTableData(
-            md5=file_md5,
-            size=file_size,
-            path=file_path
-        )
-        await sess.add(table_data)
-
-    ## Information.
-    table_info = DatabaseORMTableInfo(
-        md5=file_md5,
-        name=name,
-        note=note
-    )
-    await sess.add(table_info)
-
-    # Get ID.
-    await sess.flush()
-    file_id = table_info.file_id
-
-    return {'file_id': file_id}
 
 
 def build_file_db() -> None:
@@ -226,3 +181,104 @@ def build_file_db() -> None:
 
     # Build.
     engine.sync_engine.build.build(tables=tables, views=views, views_stats=views_stats, skip=True)
+
+
+file_router = APIRouter()
+depend_file_sess = create_depend_db('file', 'sess')
+depend_file_conn = create_depend_db('file', 'conn')
+
+
+@file_router.post('/')
+async def upload_file(
+    file: UploadFile = File(),
+    name: str = Form(None),
+    note: str = Form(None),
+    sess: rorm.DatabaseORMSessionAsync = Depends(depend_file_sess)
+) -> dict:
+    """
+    Upload file.
+
+    Parameters
+    ----------
+    file : File instance.
+    note : File note.
+    """
+
+    # Handle parameter.
+    file_store = FileStore(ServerConfig.server.api_file_dir)
+    file_bytes = await file.read()
+    file_md5 = get_md5(file_bytes)
+    file_size = len(file_bytes)
+
+    # Upload.
+    file_path = file_store.index(file_md5)
+
+    ## Data.
+    if file_path is None:
+        file_path = file_store.store(file_bytes)
+        table_data = DatabaseORMTableData(
+            md5=file_md5,
+            size=file_size,
+            path=file_path
+        )
+        await sess.add(table_data)
+
+    ## Information.
+    table_info = DatabaseORMTableInfo(
+        md5=file_md5,
+        name=name,
+        note=note
+    )
+    await sess.add(table_info)
+
+    # Get ID.
+    await sess.flush()
+    file_id = table_info.file_id
+
+    return {'file_id': file_id}
+
+
+@file_router.get('/{file_id}/download')
+async def download_file(
+    file_id: int = Path(),
+    conn: DatabaseConnectionAsync = Depends(depend_file_conn)
+) -> FileResponse:
+    """
+    Download file.
+
+    Parameters
+    ----------
+    file_id : File ID.
+    """
+
+    # Search.
+    sql = (
+        'SELECT `name`, (\n'
+        '    SELECT `path`\n'
+        f'    FROM `{conn.engine.database}`.`data`\n'
+        f'    WHERE `md5` = `info`.`md5`\n'
+        '    LIMIT 1\n'
+        ') AS `path`\n'
+        f'FROM `{conn.engine.database}`.`info`\n'
+        'WHERE `file_id` = :file_id\n'
+        'LIMIT 1'
+    )
+    result = await conn.execute(sql, file_id=file_id)
+
+    # Check.
+    if result.empty:
+        text = "file ID '%s' not exist" % file_id
+        raise ServerExitHTTP404(text)
+    file_name, file_path = result.first()
+
+    # Response.
+    response = FileResponse(file_path, filename=file_name)
+
+    return response
+
+
+@file_router.get('/{file_id}')
+async def get_file_info(
+    file_id: int = Path(),
+    sess: DatabaseConnectionAsync = Depends(depend_file_sess)
+) -> dict: ...
