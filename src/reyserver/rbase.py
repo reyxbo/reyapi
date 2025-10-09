@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@Time    : 2025-07-17 22:32:37
+@Time    : 2025-07-17
 @Author  : Rey
 @Contact : reyxbo@163.com
 @Explain : Base methods.
@@ -14,7 +14,7 @@ from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 
-from reydb import DatabaseAsync
+from reydb import DatabaseEngineAsync
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMSessionAsync
 from reykit.rbase import CoroutineFunctionSimple, Base, is_iterable
@@ -86,7 +86,7 @@ def create_lifespan(
     return lifespan
 
 
-# def create_depend_conn(db: DatabaseAsync):
+# def create_depend_conn(db: DatabaseEngineAsync):
 #     """
 #     Create dependencie function of asynchronous database connection.
 

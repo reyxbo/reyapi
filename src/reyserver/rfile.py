@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@Time    : 2025-10-06 18:23:51
+@Time    : 2025-10-06
 @Author  : Rey
 @Contact : reyxbo@163.com
 @Explain : File methods. Can create database used `self.build_db` function.
@@ -11,7 +11,7 @@
 
 from typing import Annotated
 from fastapi import APIRouter, Form, File, UploadFile, Depends
-from reydb import rorm, DatabaseAsync
+from reydb import rorm, DatabaseEngineAsync
 from reykit.ros import FileStore, get_md5
 
 from .rbase import ServerAPI
@@ -59,7 +59,7 @@ class ServerAPIFile(ServerAPI):
 
     def __init__(
         self,
-        db: DatabaseAsync,
+        db_engine: DatabaseEngineAsync,
         path: str = 'file'
     ) -> None:
         """
@@ -67,12 +67,12 @@ class ServerAPIFile(ServerAPI):
 
         Parameters
         ----------
-        db : Asynchronous database instance.
+        db_engine : Asynchronous database instance.
         path: File store directory.
         """
 
         # Build.
-        self.db = db
+        self.db_engine = db_engine
         self.path = path
 
         ## Router.
@@ -88,7 +88,7 @@ class ServerAPIFile(ServerAPI):
         """
 
         # Context.
-        async with self.db.orm.session() as sess:
+        async with self.db_engine.orm.session() as sess:
             yield sess
 
 
@@ -165,7 +165,7 @@ class ServerAPIFile(ServerAPI):
         """
 
         # Set parameter.
-        database = self.db.database
+        database = self.db_engine.database
 
         ## Table.
         tables = [DatabaseORMTableInfo, DatabaseORMTableData]
@@ -278,4 +278,4 @@ class ServerAPIFile(ServerAPI):
         ]
 
         # Build.
-        self.db.sync_database.build.build(tables=tables, views=views, views_stats=views_stats, skip=True)
+        self.db_engine.sync_database.build.build(tables=tables, views=views, views_stats=views_stats, skip=True)

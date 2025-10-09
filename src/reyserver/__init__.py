@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@Time    : 2023-02-19 18:59:26
+@Time    : 2023-02-19
 @Author  : Rey
 @Contact : reyxbo@163.com
 @Explain : Backend server method set.
