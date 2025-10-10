@@ -9,10 +9,11 @@
 """
 
 
-from typing import Sequence, Literal
+from typing import Sequence, Literal, NoReturn
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
-from fastapi import FastAPI, HTTPException, status, UploadFile as File
+from http import HTTPStatus
+from fastapi import FastAPI, HTTPException, UploadFile as File
 from fastapi.params import (
     Depends,
     Path,
@@ -26,7 +27,7 @@ from fastapi.params import (
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMModel, DatabaseORMSessionAsync
 from reykit.rwrap import wrap_cache
-from reykit.rbase import CoroutineFunctionSimple, Base, Exit, StaticMeta, ConfigMeta
+from reykit.rbase import CoroutineFunctionSimple, Base, Exit, StaticMeta, ConfigMeta, throw
 
 from . import rserver
 
@@ -35,10 +36,9 @@ __all__ = (
     'ServerBase',
     'ServerConfig',
     'ServerExit',
-    'ServerExitHTTP',
-    'ServerExitHTTP404',
-    'create_lifespan',
-    'create_depend_sess'
+    'ServerExitAPI',
+    'exit_api',
+    'ServerBind'
 )
 
 
@@ -63,33 +63,32 @@ class ServerExit(ServerBase, Exit):
     """
 
 
-class ServerExitHTTP(ServerExit, HTTPException):
+class ServerExitAPI(ServerExit, HTTPException):
     """
-    Server HTTP exit type.
-    """
-
-    status_code: int
-
-
-    def __init__(self, text: str | None = None):
-        """
-        Build instance attributes.
-
-        Parameters
-        ----------
-        text : Explain text.
-        """
-
-        # Super.
-        super().__init__(self.status_code, text)
-
-
-class ServerExitHTTP404(ServerExitHTTP):
-    """
-    Server HTTP 404 exit type.
+    Server exit API type.
     """
 
-    status_code = status.HTTP_404_NOT_FOUND
+
+def exit_api(code: int = 400, text: str | None = None) -> NoReturn:
+    """
+    Throw exception to exit API.
+
+    Parameters
+    ----------
+    code : Response status code.
+    text : Explain text.
+        `None`: Use Default text.
+    """
+
+    # Parameter.
+    if not 400 <= code <= 499:
+        throw(ValueError, code)
+    if text is None:
+        status = HTTPStatus(code)
+        text = status.description
+
+    # Throw exception.
+    raise ServerExitAPI(code, text)
 
 
 class ServerBind(ServerBase, metaclass=StaticMeta):

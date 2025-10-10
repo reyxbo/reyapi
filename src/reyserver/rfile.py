@@ -12,11 +12,9 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from reydb import rorm
-from reydb.rorm import DatabaseORMSessionAsync
-from reydb.rconn import DatabaseConnectionAsync
 from reykit.ros import FileStore, get_md5
 
-from .rbase import ServerConfig, ServerExitHTTP404, Bind
+from .rbase import ServerConfig, Bind, exit_api
 
 
 __all__ = (
@@ -268,7 +266,7 @@ async def download_file(
 
     # Check.
     if result.empty:
-        raise ServerExitHTTP404("file ID '%s' not exist" % file_id)
+        exit_api(404)
     file_name, file_path = result.first()
 
     # Response.
@@ -299,6 +297,6 @@ async def get_file_info(
 
     # Check.
     if table_info is None:
-        raise ServerExitHTTP404("file ID '%s' not exist" % file_id)
+        exit_api(404)
 
     return table_info
