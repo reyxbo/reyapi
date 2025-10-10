@@ -33,7 +33,7 @@ class DatabaseORMTableInfo(rorm.Model, table=True):
     __name__ = 'info'
     __comment__ = 'File information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
-    file_id: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), key_auto=True, comment='File self increase ID.')
+    file_id: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), key_auto=True, comment='File ID.')
     md5: str = rorm.Field(rorm.types.CHAR(32), not_null=True, index_n=True, comment='File MD5.')
     name: str = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
     note: str = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
