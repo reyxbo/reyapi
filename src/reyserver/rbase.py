@@ -11,9 +11,22 @@
 
 from typing import Sequence, Literal
 from inspect import iscoroutinefunction
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, status
-from reykit.rbase import CoroutineFunctionSimple, Base, ConfigMeta, Exit
+from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
+from fastapi import FastAPI, HTTPException, status, UploadFile as File
+from fastapi.params import (
+    Depends,
+    Path,
+    Query,
+    Header,
+    Cookie,
+    Body,
+    Form,
+    File as Forms
+)
+from reydb.rconn import DatabaseConnectionAsync
+from reydb.rorm import DatabaseORMModel, DatabaseORMSessionAsync
+from reykit.rwrap import wrap_cache
+from reykit.rbase import CoroutineFunctionSimple, Base, Exit, StaticMeta, ConfigMeta
 
 from . import rserver
 
@@ -79,85 +92,142 @@ class ServerExitHTTP404(ServerExitHTTP):
     status_code = status.HTTP_404_NOT_FOUND
 
 
-def create_lifespan(
-    before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
-    after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
-):
+class ServerBind(ServerBase, metaclass=StaticMeta):
     """
-    Create function of lifespan manager.
-
-    Parameters
-    ----------
-    before : Execute before server start.
-    after : Execute after server end.
+    Server API bind parameter type.
     """
 
-    # Parameter.
-    if before is None:
-        before = ()
-    elif iscoroutinefunction(before):
-        before = (before,)
-    if after is None:
-        after = ()
-    elif iscoroutinefunction(after):
-        after = (after,)
 
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
+    def create_lifespan(
+        before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
+        after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
+    ) -> _AsyncGeneratorContextManager[None, None]:
         """
-        Server lifespan manager.
+        Create asynchronous function of lifespan manager.
 
         Parameters
         ----------
-        app : Server APP.
-        """
+        before : Execute before server start.
+        after : Execute after server end.
 
-        # Before.
-        for task in before:
-            await task()
-        yield
-
-        # After.
-        for task in after:
-            await after()
-
-
-    return lifespan
-
-
-def create_depend_db(database: str, mode: Literal['sess', 'conn']):
-    """
-    Create dependencie function of asynchronous database.
-
-    Parameters
-    ----------
-    database : Database name.
-    mode : Mode.
-        - `Literl['sess']`: Create ORM session instance.
-        - `Literl['conn']`: Create connection instance.
-
-    Returns
-    -------
-    Dependencie function.
-    """
-
-
-    async def depend():
-        """
-        Dependencie function of asynchronous database.
+        Returns
+        -------
+        Asynchronous function.
         """
 
         # Parameter.
-        engine = ServerConfig.server.db[database]
+        if before is None:
+            before = ()
+        elif iscoroutinefunction(before):
+            before = (before,)
+        if after is None:
+            after = ()
+        elif iscoroutinefunction(after):
+            after = (after,)
 
-        # Context.
-        if mode == 'sess':
-            async with engine.orm.session() as sess:
-                yield sess
-        elif mode == 'conn':
-            async with engine.connect() as conn:
-                yield conn
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            """
+            Server lifespan manager.
+
+            Parameters
+            ----------
+            app : Server APP.
+            """
+
+            # Before.
+            for task in before:
+                await task()
+            yield
+
+            # After.
+            for task in after:
+                await after()
 
 
-    return depend
+        return lifespan
+
+
+    @wrap_cache
+    def create_depend_db(database: str, mode: Literal['sess', 'conn']) -> Depends:
+        """
+        Create dependencie type of asynchronous database.
+
+        Parameters
+        ----------
+        database : Database name.
+        mode : Mode.
+            - `Literl['sess']`: Create ORM session instance.
+            - `Literl['conn']`: Create connection instance.
+
+        Returns
+        -------
+        Dependencie type.
+        """
+
+
+        async def depend_db():
+            """
+            Dependencie function of asynchronous database.
+            """
+
+            # Parameter.
+            engine = ServerConfig.server.db[database]
+
+            # Context.
+            if mode == 'sess':
+                async with engine.orm.session() as sess:
+                    yield sess
+            elif mode == 'conn':
+                async with engine.connect() as conn:
+                    yield conn
+
+
+        # Create.
+        depend = Depends(depend_db)
+
+        return depend
+
+
+    Depend = Depends
+    Path = Path
+    Query = Query
+    Header = Header
+    Cookie = Cookie
+    Body = Body
+    Form = Form
+    Forms = Forms
+    File = File
+    JSON = DatabaseORMModel
+    Conn = DatabaseConnectionAsync
+    Sess = DatabaseORMSessionAsync
+    path = Path()
+    'Path instance.'
+    query = Query()
+    'Query instance.'
+    header = Header()
+    'Header instance.'
+    cookie = Cookie()
+    'Cookie instance.'
+    body = Body()
+    'Body instance.'
+    form = Form()
+    'Form instance.'
+    forms = Forms()
+    'Forms instance.'
+    query_n = Query(None)
+    'Query instance, default `None`.'
+    header_n = Header(None)
+    'Header instance, default `None`.'
+    cookie_n = Cookie(None)
+    'Cookie instance, default `None`.'
+    body_n = Body(None)
+    'Body instance, default `None`.'
+    form_n = Form(None)
+    'Form instance, default `None`.'
+    forms_n = Forms(None)
+    'Forms instance, default `None`.'
+
+
+Bind = ServerBind

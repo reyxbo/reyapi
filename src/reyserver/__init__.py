@@ -10,6 +10,7 @@
 Modules
 -------
 rall : All methods.
+rauth : Authentication methods.
 rbase : Base methods.
 rclient : Client methods.
 rfile : File methods.

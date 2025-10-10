@@ -9,21 +9,14 @@
 """
 
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    Path,
-    Form,
-    File,
-    UploadFile
-)
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from reydb import rorm
 from reydb.rorm import DatabaseORMSessionAsync
 from reydb.rconn import DatabaseConnectionAsync
 from reykit.ros import FileStore, get_md5
 
-from .rbase import ServerConfig, ServerExitHTTP404, create_depend_db
+from .rbase import ServerConfig, ServerExitHTTP404, Bind
 
 
 __all__ = (
@@ -184,24 +177,29 @@ def build_file_db() -> None:
 
 
 file_router = APIRouter()
-depend_file_sess = create_depend_db('file', 'sess')
-depend_file_conn = create_depend_db('file', 'conn')
+depend_file_sess = Bind.create_depend_db('file', 'sess')
+depend_file_conn = Bind.create_depend_db('file', 'conn')
 
 
 @file_router.post('/')
 async def upload_file(
-    file: UploadFile = File(),
-    name: str = Form(None),
-    note: str = Form(None),
-    sess: rorm.DatabaseORMSessionAsync = Depends(depend_file_sess)
-) -> dict:
+    file: Bind.File = Bind.forms,
+    name: str = Bind.forms_n,
+    note: str = Bind.forms_n,
+    sess: Bind.Sess = depend_file_sess
+) -> DatabaseORMTableInfo:
     """
     Upload file.
 
     Parameters
     ----------
     file : File instance.
+    name : File name.
     note : File note.
+
+    Returns
+    -------
+    File information.
     """
 
     # Handle parameter.
@@ -233,15 +231,14 @@ async def upload_file(
 
     # Get ID.
     await sess.flush()
-    file_id = table_info.file_id
 
-    return {'file_id': file_id}
+    return table_info
 
 
 @file_router.get('/{file_id}/download')
 async def download_file(
-    file_id: int = Path(),
-    conn: DatabaseConnectionAsync = Depends(depend_file_conn)
+    file_id: int = Bind.path,
+    conn: Bind.Conn = depend_file_conn
 ) -> FileResponse:
     """
     Download file.
@@ -249,6 +246,10 @@ async def download_file(
     Parameters
     ----------
     file_id : File ID.
+
+    Returns
+    -------
+    File data.
     """
 
     # Search.
@@ -267,8 +268,7 @@ async def download_file(
 
     # Check.
     if result.empty:
-        text = "file ID '%s' not exist" % file_id
-        raise ServerExitHTTP404(text)
+        raise ServerExitHTTP404("file ID '%s' not exist" % file_id)
     file_name, file_path = result.first()
 
     # Response.
@@ -279,6 +279,26 @@ async def download_file(
 
 @file_router.get('/{file_id}')
 async def get_file_info(
-    file_id: int = Path(),
-    sess: DatabaseConnectionAsync = Depends(depend_file_sess)
-) -> dict: ...
+    file_id: int = Bind.path,
+    sess: Bind.Sess = depend_file_sess
+) -> DatabaseORMTableInfo:
+    """
+    Get file information.
+
+    Parameters
+    ----------
+    file_id : File ID.
+
+    Returns
+    -------
+    File information.
+    """
+
+    # Get.
+    table_info = await sess.get(DatabaseORMTableInfo, file_id)
+
+    # Check.
+    if table_info is None:
+        raise ServerExitHTTP404("file ID '%s' not exist" % file_id)
+
+    return table_info

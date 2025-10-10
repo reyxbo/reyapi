@@ -9,6 +9,7 @@
 """
 
 
+from .rauth import *
 from .rbase import *
 from .rclient import *
 from .rfile import *
