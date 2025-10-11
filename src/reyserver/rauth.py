@@ -10,16 +10,21 @@
 
 
 from fastapi import APIRouter
-from reydb import rorm
+from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
+from reykit.rdata import encode_jwt, decode_jwt, hash_bcrypt, is_hash_bcrypt
+from reykit.rtime import now
 
 from .rbase import ServerConfig, Bind, exit_api
 
 
 __all__ = (
-    'DatabaseORMTableInfo',
-    'DatabaseORMTableData',
-    'build_file_db',
-    'file_router'
+    'DatabaseORMTableUser',
+    'DatabaseORMTableRole',
+    'DatabaseORMTablePerm',
+    'DatabaseORMTableUserRole',
+    'DatabaseORMTableRolePerm',
+    'build_auth_db',
+    'auth_router'
 )
 
 
@@ -34,10 +39,10 @@ class DatabaseORMTableUser(rorm.Model, table=True):
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
     user_id: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), key_auto=True, comment='User ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='User name.')
-    password: str
-    email: rorm.Email
-    phone: int
-    head: int
+    password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".')
+    email: rorm.Email = rorm.Field(rorm.types.VARCHAR(255), index_u=True, comment='User email.')
+    phone: str = rorm.Field(rorm.types.CHAR(11), index_u=True, comment='User phone.')
+    avatar: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), comment='User avatar file ID.')
     is_valid: bool = rorm.Field(rorm.types_mysql.TINYINT(unsigned=True), field_default='1', not_null=True, comment='Is the valid.')
 
 
@@ -61,13 +66,14 @@ class DatabaseORMTablePerm(rorm.Model, table=True):
     """
 
     __name__ = 'perm'
-    __comment__ = 'Permission information table.'
+    __comment__ = 'API permission information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
     perm_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key_auto=True, comment='Permission ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='Permission name.')
     desc: str = rorm.Field(rorm.types.VARCHAR(500), comment='Permission description.')
-    code: str
+    method: str = rorm.Field(rorm.types.VARCHAR(7), comment='API request method regular expression "match" pattern.')
+    path: str = rorm.Field(rorm.types.VARCHAR(1000), comment='API resource path regular expression "match" pattern.')
 
 
 class DatabaseORMTableUserRole(rorm.Model, table=True):
@@ -96,13 +102,16 @@ class DatabaseORMTableRolePerm(rorm.Model, table=True):
     perm_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key=True, comment='Permission ID.')
 
 
-def build_file_db() -> None:
+def build_auth_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
-    Check and build `file` database tables.
+    Check and build `auth` database tables.
+
+    Parameters
+    ----------
+    db : Database engine instance.
     """
 
     # Set parameter.
-    engine = ServerConfig.server.db.file
     database = engine.database
 
     ## Table.
@@ -120,110 +129,123 @@ def build_file_db() -> None:
             'path': 'stats',
             'items': [
                 {
-                    'name': 'count',
+                    'name': 'user_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`info`'
+                        f'FROM `{database}`.`user`'
                     ),
-                    'comment': 'File information count.'
+                    'comment': 'User information count.'
                 },
                 {
-                    'name': 'past_day_count',
+                    'name': 'role_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`info`\n'
+                        f'FROM `{database}`.`role`'
+                    ),
+                    'comment': 'Role information count.'
+                },
+                {
+                    'name': 'perm_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        f'FROM `{database}`.`perm`'
+                    ),
+                    'comment': 'Permission information count.'
+                },
+                {
+                    'name': 'user_day_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        f'FROM `{database}`.`user`\n'
                         'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) = 0'
                     ),
-                    'comment': 'File information count in the past day.'
+                    'comment': 'User information count in the past day.'
                 },
                 {
-                    'name': 'past_week_count',
+                    'name': 'user_week_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`info`\n'
+                        f'FROM `{database}`.`user`\n'
                         'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) <= 6'
                     ),
-                    'comment': 'File information count in the past week.'
+                    'comment': 'User information count in the past week.'
                 },
                 {
-                    'name': 'past_month_count',
+                    'name': 'user_month_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`info`\n'
+                        f'FROM `{database}`.`user`\n'
                         'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) <= 29'
                     ),
-                    'comment': 'File information count in the past month.'
+                    'comment': 'User information count in the past month.'
                 },
                 {
-                    'name': 'data_count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`data`'
-                    ),
-                    'comment': 'File data unique count.'
-                },
-                {
-                    'name': 'total_size',
-                    'select': (
-                        'SELECT FORMAT(SUM(`size`), 0)\n'
-                        f'FROM `{database}`.`data`'
-                    ),
-                    'comment': 'File total byte size.'
-                },
-                {
-                    'name': 'avg_size',
-                    'select': (
-                        'SELECT FORMAT(AVG(`size`), 0)\n'
-                        f'FROM `{database}`.`data`'
-                    ),
-                    'comment': 'File average byte size.'
-                },
-                {
-                    'name': 'max_size',
-                    'select': (
-                        'SELECT FORMAT(MAX(`size`), 0)\n'
-                        f'FROM `{database}`.`data`'
-                    ),
-                    'comment': 'File maximum byte size.'
-                },
-                {
-                    'name': 'last_time',
+                    'name': 'user_last_time',
                     'select': (
                         'SELECT MAX(`create_time`)\n'
-                        f'FROM `{database}`.`info`'
+                        f'FROM `{database}`.`user`'
                     ),
-                    'comment': 'File last record create time.'
+                    'comment': 'User last record create time.'
                 }
             ]
         }
     ]
 
     # Build.
-    engine.sync_engine.build.build(tables=tables, views=views, views_stats=views_stats, skip=True)
+    engine.sync_engine.build.build(tables=tables, views_stats=views_stats, skip=True)
 
 
-file_router = APIRouter()
-depend_file_sess = Bind.create_depend_db('file', 'sess')
-depend_file_conn = Bind.create_depend_db('file', 'conn')
+auth_router = APIRouter()
+depend_auth_sess = Bind.create_depend_db('auth', 'sess')
+depend_auth_conn = Bind.create_depend_db('auth', 'conn')
 
 
-@file_router.post('/')
-async def upload_file(
-    file: Bind.File = Bind.forms,
-    name: str = Bind.forms_n,
-    note: str = Bind.forms_n,
-    sess: Bind.Sess = depend_file_sess
-) -> DatabaseORMTableInfo:
+@auth_router.post('/sessions')
+async def create_sessions(
+    username: str = Bind.body,
+    password: str = Bind.body,
+    conn: Bind.Conn = depend_auth_conn
+) -> dict:
     """
-    Upload file.
+    Create session.
 
     Parameters
     ----------
-    file : File instance.
-    name : File name.
-    note : File note.
+    username : User name.
+    password : User password.
 
     Returns
     -------
-    File information.
+    JSON with `token`.
     """
+
+    # Parameter.
+    key = ServerConfig.server.api_auth_key
+    password_hash = hash_bcrypt(password)
+
+    # Check.
+    sql = (
+        ''
+    )
+    result = await conn.execute(
+        sql,
+        username=username,
+        password_hash=password_hash
+    )
+
+    # Check.
+    if result.empty:
+        exit_api(401)
+
+    # Response.
+    json = {
+        'time': now('timestamp'),
+        'sub': username,
+        'iat': now('timestamp'),
+        'nbf': now('timestamp'),
+        'exp': now('timestamp') + 28800000
+    }
+    token = encode_jwt(json, key)
+    data = {'token': token}
+
+    return data

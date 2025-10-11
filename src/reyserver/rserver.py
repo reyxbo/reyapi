@@ -19,7 +19,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from reydb import DatabaseAsync
-from reykit.rbase import CallableT, CoroutineFunctionSimple, Singleton, throw
+from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
+from reykit.rrand import randchar
 
 from .rbase import ServerBase, ServerConfig, Bind
 
@@ -102,6 +103,8 @@ class Server(ServerBase, Singleton):
         self.__add_default_middleware()
 
         # API.
+        self.api_auth_key: str
+        'Authentication API JWT encryption key.'
         self.api_file_dir: str
         'File API store directory path.'
 
@@ -187,13 +190,30 @@ class Server(ServerBase, Singleton):
                 setattr(self.app, key, value)
 
 
-    def add_api_auth(self):
+    def add_api_auth(self, key: str | None = None) -> None:
         """
-        Add Authentication API.
+        Add authentication API.
         Note: must include database engine of `auth` name.
+
+        Parameters
+        ----------
+        key : JWT encryption key.
+            - `None`: Random 32 length string.
         """
 
-        ...
+        from .rauth import build_file_db, auth_router
+
+        # Parameter.
+        if key is None:
+            key = randchar(32)
+
+        # Build database.
+        engine = self.db.auth
+        build_file_db(engine)
+
+        # Add.
+        self.api_auth_key = key
+        self.app.include_router(auth_router, tags=['auth'])
 
 
     def add_api_file(self, file_dir: str = 'file') -> None:
@@ -207,11 +227,12 @@ class Server(ServerBase, Singleton):
         prefix : File API path prefix.
         """
 
-        from .rfile import file_router, build_file_db
+        from .rfile import build_file_db, file_router
 
         # Build database.
-        build_file_db()
+        engine = self.db.file
+        build_file_db(engine)
 
         # Add.
         self.api_file_dir = file_dir
-        self.app.include_router(file_router, prefix='/files', tags=['file'])
+        self.app.include_router(file_router, tags=['file'])

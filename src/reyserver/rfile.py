@@ -11,7 +11,7 @@
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
-from reydb import rorm
+from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.ros import FileStore, get_md5
 
 from .rbase import ServerConfig, Bind, exit_api
@@ -51,13 +51,16 @@ class DatabaseORMTableData(rorm.Model, table=True):
     path: str = rorm.Field(rorm.types.VARCHAR(4095), not_null=True, comment='File disk storage path.')
 
 
-def build_file_db() -> None:
+def build_file_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
     Check and build `file` database tables.
+
+    Parameters
+    ----------
+    db : Database engine instance.
     """
 
     # Set parameter.
-    engine = ServerConfig.server.db.file
     database = engine.database
 
     ## Table.
@@ -179,7 +182,34 @@ depend_file_sess = Bind.create_depend_db('file', 'sess')
 depend_file_conn = Bind.create_depend_db('file', 'conn')
 
 
-@file_router.post('/')
+@file_router.get('/files/{file_id}')
+async def get_file_info(
+    file_id: int = Bind.path,
+    sess: Bind.Sess = depend_file_sess
+) -> DatabaseORMTableInfo:
+    """
+    Get file information.
+
+    Parameters
+    ----------
+    file_id : File ID.
+
+    Returns
+    -------
+    File information.
+    """
+
+    # Get.
+    table_info = await sess.get(DatabaseORMTableInfo, file_id)
+
+    # Check.
+    if table_info is None:
+        exit_api(404)
+
+    return table_info
+
+
+@file_router.post('/files')
 async def upload_file(
     file: Bind.File = Bind.forms,
     name: str = Bind.forms_n,
@@ -233,7 +263,7 @@ async def upload_file(
     return table_info
 
 
-@file_router.get('/{file_id}/download')
+@file_router.get('/files/{file_id}/download')
 async def download_file(
     file_id: int = Bind.path,
     conn: Bind.Conn = depend_file_conn
@@ -273,30 +303,3 @@ async def download_file(
     response = FileResponse(file_path, filename=file_name)
 
     return response
-
-
-@file_router.get('/{file_id}')
-async def get_file_info(
-    file_id: int = Bind.path,
-    sess: Bind.Sess = depend_file_sess
-) -> DatabaseORMTableInfo:
-    """
-    Get file information.
-
-    Parameters
-    ----------
-    file_id : File ID.
-
-    Returns
-    -------
-    File information.
-    """
-
-    # Get.
-    table_info = await sess.get(DatabaseORMTableInfo, file_id)
-
-    # Check.
-    if table_info is None:
-        exit_api(404)
-
-    return table_info
