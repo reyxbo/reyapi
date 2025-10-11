@@ -9,11 +9,12 @@
 """
 
 
-from typing import Literal
+from typing import Any, Literal
+from datetime import datetime as Datetime
 from fastapi import APIRouter
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
-# from reykit.rdata import encode_jwt, is_hash_bcrypt
-# from reykit.rtime import now
+from reykit.rdata import encode_jwt, is_hash_bcrypt
+from reykit.rtime import now, time_to
 
 from .rbase import ServerConfig, Bind, exit_api
 
@@ -263,41 +264,39 @@ async def create_sessions(
         "    SELECT `perm_id`, `name`, CONCAT(`method`, ':', `path`) as `api`\n"
         '    FROM `test`.`perm`\n'
         ') AS `perm`\n'
-        'ON `role_perm`.`perm_id` = `perm`.`perm_id`'
+        'ON `role_perm`.`perm_id` = `perm`.`perm_id`\n'
+        'GROUP BY `user_id`'
     )
-    print(1111111111111)
     result = await conn.execute(
         sql,
         account=account
     )
-    print(result.fetchall())
-    return {'message': 'ok'}
 
-    # # Check.
-    # table = result.to_table()
-    # print(table)
-    # if table == []:
-    #     exit_api(401)
-    # json = table[0]
-    # if not is_hash_bcrypt(password, json['password']):
-    #     exit_api(401)
+    # Check.
+    if result.empty:
+        exit_api(401)
+    json: dict[str, Datetime | Any] = result.to_row()
+    if not is_hash_bcrypt(password, json['password']):
+        exit_api(401)
 
-    # # JWT.
-    # now_timestamp_s = now('timestamp_s')
-    # json['sub'] = json.pop('user_id')
-    # json['iat'] = now_timestamp_s
-    # json['nbf'] = now_timestamp_s
-    # json['exp'] = now_timestamp_s + sess_seconds
-    # json['role_names'] = json['role_names'].split(';')
-    # json['perm_names'] = json['perm_names'].split(';')
-    # perm_apis: list[str] = json['perm_apis'].split(';')
-    # perm_api_dict = {}
-    # for perm_api in perm_apis:
-    #     for method, path in perm_api.split(':', 1):
-    #         paths: list = perm_api_dict.setdefault(method, [])
-    #         paths.append(path)
-    # json['perm_apis'] = perm_api_dict
-    # token = encode_jwt(json, key)
-    # data = {'token': token}
-    # print(111111, data)
-    # return data
+    # JWT.
+    now_timestamp_s = now('timestamp_s')
+    json['sub'] = json.pop('user_id')
+    json['iat'] = now_timestamp_s
+    json['nbf'] = now_timestamp_s
+    json['exp'] = now_timestamp_s + sess_seconds
+    json['role_names'] = json['role_names'].split(';')
+    json['perm_names'] = json['perm_names'].split(';')
+    perm_apis: list[str] = json['perm_apis'].split(';')
+    perm_api_dict = {}
+    for perm_api in perm_apis:
+        method, path = perm_api.split(':', 1)
+        paths: list = perm_api_dict.setdefault(method, [])
+        paths.append(path)
+    json['perm_apis'] = perm_api_dict
+    json['create_time'] = json['create_time'].timestamp()
+    json['update_time'] = json['update_time'].timestamp()
+    token = encode_jwt(json, key)
+    data = {'token': token}
+
+    return data

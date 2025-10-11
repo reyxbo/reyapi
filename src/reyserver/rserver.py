@@ -138,7 +138,10 @@ class Server(ServerBase, Singleton):
             response = await call_next(request)
 
             # After.
-            if request.method == 'POST':
+            if (
+                response.status_code == 200
+                and request.method == 'POST'
+            ):
                 response.status_code = 201
 
             return response
