@@ -26,8 +26,7 @@ from fastapi.params import (
 )
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMModel, DatabaseORMSessionAsync
-from reykit.rwrap import wrap_cache
-from reykit.rbase import CoroutineFunctionSimple, Base, Exit, StaticMeta, ConfigMeta, throw
+from reykit.rbase import CoroutineFunctionSimple, Base, Exit, StaticMeta, ConfigMeta, Singleton, throw
 
 from . import rserver
 
@@ -38,7 +37,8 @@ __all__ = (
     'ServerExit',
     'ServerExitAPI',
     'exit_api',
-    'ServerBind'
+    'ServerBind',
+    'Bind'
 )
 
 
@@ -89,6 +89,168 @@ def exit_api(code: int = 400, text: str | None = None) -> NoReturn:
 
     # Throw exception.
     raise ServerExitAPI(code, text)
+
+
+class ServerBindInstance(ServerBase, Singleton):
+    """
+    Server API bind parameter build instance type.
+    """
+
+
+    @property
+    def path(self) -> Path:
+        """
+        Path instance.
+        """
+
+        # Build.
+        path = Path()
+
+        return path
+
+
+    @property
+    def query(self) -> Query:
+        """
+        Query instance.
+        """
+
+        # Build.
+        query = Query()
+
+        return query
+
+
+    @property
+    def header(self) -> Header:
+        """
+        Header instance.
+        """
+
+        # Build.
+        header = Header()
+
+        return header
+
+
+    @property
+    def cookie(self) -> Cookie:
+        """
+        Cookie instance.
+        """
+
+        # Build.
+        cookie = Cookie()
+
+        return cookie
+
+
+    @property
+    def body(self) -> Body:
+        """
+        Body instance.
+        """
+
+        # Build.
+        body = Body()
+
+        return body
+
+
+    @property
+    def form(self) -> Form:
+        """
+        Form instance.
+        """
+
+        # Build.
+        form = Form()
+
+        return form
+
+
+    @property
+    def forms(self) -> Forms:
+        """
+        Forms instance.
+        """
+
+        # Build.
+        forms = Forms()
+
+        return forms
+
+
+    @property
+    def query_n(self) -> Query:
+        """
+        Query instance, default `None`.
+        """
+
+        # Build.
+        query = Query(None)
+
+        return query
+
+
+    @property
+    def header_n(self) -> Header:
+        """
+        Header instance, default `None`.
+        """
+
+        # Build.
+        header = Header(None)
+
+        return header
+
+
+    @property
+    def cookie_n(self) -> Cookie:
+        """
+        Cookie instance, default `None`.
+        """
+
+        # Build.
+        cookie = Cookie(None)
+
+        return cookie
+
+
+    @property
+    def body_n(self) -> Body:
+        """
+        Body instance, default `None`.
+        """
+
+        # Build.
+        body = Body(None)
+
+        return body
+
+
+    @property
+    def form_n(self) -> Form:
+        """
+        Form instance, default `None`.
+        """
+
+        # Build.
+        form = Form(None)
+
+        return form
+
+
+    @property
+    def forms_n(self) -> Forms:
+        """
+        Forms instance, default `None`.
+        """
+
+        # Build.
+        forms = Forms(None)
+
+        return forms
 
 
 class ServerBind(ServerBase, metaclass=StaticMeta):
@@ -148,7 +310,6 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
         return lifespan
 
 
-    @wrap_cache
     def create_depend_db(database: str, mode: Literal['sess', 'conn']) -> Depends:
         """
         Create dependencie type of asynchronous database.
@@ -201,32 +362,7 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     JSON = DatabaseORMModel
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
-    path = Path()
-    'Path instance.'
-    query = Query()
-    'Query instance.'
-    header = Header()
-    'Header instance.'
-    cookie = Cookie()
-    'Cookie instance.'
-    body = Body()
-    'Body instance.'
-    form = Form()
-    'Form instance.'
-    forms = Forms()
-    'Forms instance.'
-    query_n = Query(None)
-    'Query instance, default `None`.'
-    header_n = Header(None)
-    'Header instance, default `None`.'
-    cookie_n = Cookie(None)
-    'Cookie instance, default `None`.'
-    body_n = Body(None)
-    'Body instance, default `None`.'
-    form_n = Form(None)
-    'Form instance, default `None`.'
-    forms_n = Forms(None)
-    'Forms instance, default `None`.'
+    i = ServerBindInstance()
 
 
 Bind = ServerBind

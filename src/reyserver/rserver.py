@@ -105,6 +105,8 @@ class Server(ServerBase, Singleton):
         # API.
         self.api_auth_key: str
         'Authentication API JWT encryption key.'
+        self.api_auth_sess_seconds: int
+        'Authentication API session valid seconds.'
         self.api_file_dir: str
         'File API store directory path.'
 
@@ -190,7 +192,7 @@ class Server(ServerBase, Singleton):
                 setattr(self.app, key, value)
 
 
-    def add_api_auth(self, key: str | None = None) -> None:
+    def add_api_auth(self, key: str | None = None, sess_seconds: int = 28800) -> None:
         """
         Add authentication API.
         Note: must include database engine of `auth` name.
@@ -199,9 +201,10 @@ class Server(ServerBase, Singleton):
         ----------
         key : JWT encryption key.
             - `None`: Random 32 length string.
+        sess_seconds : Session valid seconds.
         """
 
-        from .rauth import build_file_db, auth_router
+        from .rauth import build_auth_db, auth_router
 
         # Parameter.
         if key is None:
@@ -209,10 +212,11 @@ class Server(ServerBase, Singleton):
 
         # Build database.
         engine = self.db.auth
-        build_file_db(engine)
+        build_auth_db(engine)
 
         # Add.
         self.api_auth_key = key
+        self.api_auth_sess_seconds = sess_seconds
         self.app.include_router(auth_router, tags=['auth'])
 
 

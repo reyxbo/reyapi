@@ -184,7 +184,7 @@ depend_file_conn = Bind.create_depend_db('file', 'conn')
 
 @file_router.get('/files/{file_id}')
 async def get_file_info(
-    file_id: int = Bind.path,
+    file_id: int = Bind.i.path,
     sess: Bind.Sess = depend_file_sess
 ) -> DatabaseORMTableInfo:
     """
@@ -211,9 +211,9 @@ async def get_file_info(
 
 @file_router.post('/files')
 async def upload_file(
-    file: Bind.File = Bind.forms,
-    name: str = Bind.forms_n,
-    note: str = Bind.forms_n,
+    file: Bind.File = Bind.i.forms,
+    name: str = Bind.i.forms_n,
+    note: str = Bind.i.forms_n,
     sess: Bind.Sess = depend_file_sess
 ) -> DatabaseORMTableInfo:
     """
@@ -265,7 +265,7 @@ async def upload_file(
 
 @file_router.get('/files/{file_id}/download')
 async def download_file(
-    file_id: int = Bind.path,
+    file_id: int = Bind.i.path,
     conn: Bind.Conn = depend_file_conn
 ) -> FileResponse:
     """

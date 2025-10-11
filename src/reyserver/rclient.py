@@ -9,7 +9,7 @@
 """
 
 
-from typing import TypedDict
+from typing import TypedDict, Literal
 from datetime import datetime as Datetime
 from reykit.ros import File, Folder, overload
 from reykit.rnet import join_url, request, get_response_file_name
@@ -42,6 +42,43 @@ class ServerClient(ServerBase):
 
         # Build.
         self.url = url
+
+
+    def create_session(
+        self,
+        account: str,
+        password: str,
+        account_type: Literal['name', 'email', 'phone'] = 'name'
+    ) -> str:
+        """
+        Create session.
+
+        Parameters
+        ----------
+        account : User account, name or email or phone.
+        password : User password.
+        account_type : User account type.
+
+        Returns
+        -------
+        Token.
+        """
+
+        # Parameter.
+        url = join_url(self.url, 'sessions')
+        json = {
+            'account': account,
+            'password': password,
+            'account_type': account_type
+        }
+
+        # Request.
+        response = request(url, json=json, check=True)
+        response_dict = response.json()
+        print(response_dict)
+        token = response_dict['token']
+
+        return token
 
 
     def upload_file(
