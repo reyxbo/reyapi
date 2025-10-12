@@ -30,7 +30,7 @@ __all__ = (
 )
 
 
-class DatabaseORMTableUser(rorm.Model, table=True):
+class DatabaseORMTableUser(rorm.Table):
     """
     Database `user` table ORM model.
     """
@@ -48,7 +48,7 @@ class DatabaseORMTableUser(rorm.Model, table=True):
     is_valid: bool = rorm.Field(rorm.types_mysql.TINYINT(unsigned=True), field_default='1', not_null=True, comment='Is the valid.')
 
 
-class DatabaseORMTableRole(rorm.Model, table=True):
+class DatabaseORMTableRole(rorm.Table):
     """
     Database `role` table ORM model.
     """
@@ -62,7 +62,7 @@ class DatabaseORMTableRole(rorm.Model, table=True):
     desc: str = rorm.Field(rorm.types.VARCHAR(500), comment='Role description.')
 
 
-class DatabaseORMTablePerm(rorm.Model, table=True):
+class DatabaseORMTablePerm(rorm.Table):
     """
     Database `perm` table ORM model.
     """
@@ -77,7 +77,7 @@ class DatabaseORMTablePerm(rorm.Model, table=True):
     api: str = rorm.Field(rorm.types.VARCHAR(1000), comment='API resource path regular expression "match" pattern.')
 
 
-class DatabaseORMTableUserRole(rorm.Model, table=True):
+class DatabaseORMTableUserRole(rorm.Table):
     """
     Database `user_role` table ORM model.
     """
@@ -90,7 +90,7 @@ class DatabaseORMTableUserRole(rorm.Model, table=True):
     role_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key=True, comment='Role ID.')
 
 
-class DatabaseORMTableRolePerm(rorm.Model, table=True):
+class DatabaseORMTableRolePerm(rorm.Table):
     """
     Database `role_perm` table ORM model.
     """

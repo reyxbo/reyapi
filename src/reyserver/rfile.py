@@ -25,7 +25,7 @@ __all__ = (
 )
 
 
-class DatabaseORMTableInfo(rorm.Model, table=True):
+class DatabaseORMTableInfo(rorm.Table):
     """
     Database `info` table ORM model.
     """
@@ -39,7 +39,7 @@ class DatabaseORMTableInfo(rorm.Model, table=True):
     note: str = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
 
 
-class DatabaseORMTableData(rorm.Model, table=True):
+class DatabaseORMTableData(rorm.Table):
     """
     Database `data` table ORM model.
     """
