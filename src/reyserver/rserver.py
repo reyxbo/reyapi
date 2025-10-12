@@ -48,6 +48,7 @@ class Server(ServerBase, Singleton):
         after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
         ssl_cert: str | None = None,
         ssl_key: str | None = None,
+        db_warm: bool = False,
         debug: bool = False
     ) -> None:
         """
@@ -62,6 +63,7 @@ class Server(ServerBase, Singleton):
         after : Execute after server end.
         ssl_cert : SSL certificate file path.
         ssl_key : SSL key file path.
+        db_warm : Whether database pre create connection to warm all pool.
         debug : Whether use development mode debug server.
         """
 
@@ -76,7 +78,7 @@ class Server(ServerBase, Singleton):
             Bind.Depend(task)
             for task in depend
         ]
-        lifespan = self.__create_lifespan(before, after)
+        lifespan = self.__create_lifespan(before, after, db_warm)
 
         # Build.
         ServerConfig.server = self
@@ -114,8 +116,9 @@ class Server(ServerBase, Singleton):
 
     def __create_lifespan(
         self,
-        before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
-        after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
+        before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None,
+        after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None,
+        db_warm: bool
     ) -> _AsyncGeneratorContextManager[None, None]:
         """
         Create asynchronous function of lifespan manager.
@@ -124,6 +127,7 @@ class Server(ServerBase, Singleton):
         ----------
         before : Execute before server start.
         after : Execute after server end.
+        db_warm : Whether database pre create connection to warm all pool.
 
         Returns
         -------
@@ -154,6 +158,12 @@ class Server(ServerBase, Singleton):
             # Before.
             for task in before:
                 await task()
+
+            # Databse.
+            if db_warm:
+                await self.db.warm_all()
+
+            # Runing.
             yield
 
             # After.
