@@ -9,11 +9,9 @@
 """
 
 
-from typing import Sequence, Literal, NoReturn
-from inspect import iscoroutinefunction
-from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
+from typing import Literal, NoReturn
 from http import HTTPStatus
-from fastapi import FastAPI, HTTPException, UploadFile as File
+from fastapi import HTTPException, UploadFile as File
 from fastapi.params import (
     Depends,
     Path,
@@ -26,7 +24,7 @@ from fastapi.params import (
 )
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMModel, DatabaseORMSessionAsync
-from reykit.rbase import CoroutineFunctionSimple, Base, Exit, StaticMeta, ConfigMeta, Singleton, throw
+from reykit.rbase import Base, Exit, StaticMeta, ConfigMeta, Singleton, throw
 
 from . import rserver
 
@@ -257,57 +255,6 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     """
     Server API bind parameter type.
     """
-
-
-    def create_lifespan(
-        before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
-        after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
-    ) -> _AsyncGeneratorContextManager[None, None]:
-        """
-        Create asynchronous function of lifespan manager.
-
-        Parameters
-        ----------
-        before : Execute before server start.
-        after : Execute after server end.
-
-        Returns
-        -------
-        Asynchronous function.
-        """
-
-        # Parameter.
-        if before is None:
-            before = ()
-        elif iscoroutinefunction(before):
-            before = (before,)
-        if after is None:
-            after = ()
-        elif iscoroutinefunction(after):
-            after = (after,)
-
-
-        @asynccontextmanager
-        async def lifespan(app: FastAPI):
-            """
-            Server lifespan manager.
-
-            Parameters
-            ----------
-            app : Server APP.
-            """
-
-            # Before.
-            for task in before:
-                await task()
-            yield
-
-            # After.
-            for task in after:
-                await after()
-
-
-        return lifespan
 
 
     def create_depend_db(database: str, mode: Literal['sess', 'conn']) -> Depends:

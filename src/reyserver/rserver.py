@@ -12,6 +12,7 @@
 from typing import Literal
 from collections.abc import Sequence, Callable, Coroutine
 from inspect import iscoroutinefunction
+from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
 from uvicorn import run as uvicorn_run
 from starlette.middleware.base import _StreamingResponse
 from fastapi import FastAPI, Request
@@ -67,7 +68,6 @@ class Server(ServerBase, Singleton):
         # Parameter.
         if type(ssl_cert) != type(ssl_key):
             throw(AssertionError, ssl_cert, ssl_key)
-        lifespan = Bind.create_lifespan(before, after)
         if depend is None:
             depend = ()
         elif iscoroutinefunction(depend):
@@ -76,6 +76,7 @@ class Server(ServerBase, Singleton):
             Bind.Depend(task)
             for task in depend
         ]
+        lifespan = self.__create_lifespan(before, after)
 
         # Build.
         ServerConfig.server = self
@@ -109,6 +110,61 @@ class Server(ServerBase, Singleton):
         'Authentication API session valid seconds.'
         self.api_file_dir: str
         'File API store directory path.'
+
+
+    def __create_lifespan(
+        self,
+        before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
+        after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
+    ) -> _AsyncGeneratorContextManager[None, None]:
+        """
+        Create asynchronous function of lifespan manager.
+
+        Parameters
+        ----------
+        before : Execute before server start.
+        after : Execute after server end.
+
+        Returns
+        -------
+        Asynchronous function.
+        """
+
+        # Parameter.
+        if before is None:
+            before = ()
+        elif iscoroutinefunction(before):
+            before = (before,)
+        if after is None:
+            after = ()
+        elif iscoroutinefunction(after):
+            after = (after,)
+
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            """
+            Server lifespan manager.
+
+            Parameters
+            ----------
+            app : Server APP.
+            """
+
+            # Before.
+            for task in before:
+                await task()
+            yield
+
+            # After.
+            for task in after:
+                await after()
+
+            # Database.
+            await self.db.dispose_all()
+
+
+        return lifespan
 
 
     def __add_default_middleware(self) -> None:
