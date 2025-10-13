@@ -178,14 +178,12 @@ def build_file_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
 
 file_router = APIRouter()
-depend_file_sess = Bind.create_depend_db('file', 'sess')
-depend_file_conn = Bind.create_depend_db('file', 'conn')
 
 
 @file_router.get('/files/{file_id}')
 async def get_file_info(
     file_id: int = Bind.i.path,
-    sess: Bind.Sess = depend_file_sess
+    sess: Bind.Sess = Bind.sess.file
 ) -> DatabaseORMTableInfo:
     """
     Get file information.
@@ -214,7 +212,7 @@ async def upload_file(
     file: Bind.File = Bind.i.forms,
     name: str = Bind.i.forms_n,
     note: str = Bind.i.forms_n,
-    sess: Bind.Sess = depend_file_sess
+    sess: Bind.Sess = Bind.sess.file
 ) -> DatabaseORMTableInfo:
     """
     Upload file.
@@ -266,7 +264,7 @@ async def upload_file(
 @file_router.get('/files/{file_id}/download')
 async def download_file(
     file_id: int = Bind.i.path,
-    conn: Bind.Conn = depend_file_conn
+    conn: Bind.Conn = Bind.conn.file
 ) -> FileResponse:
     """
     Download file.

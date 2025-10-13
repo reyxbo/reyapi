@@ -159,7 +159,7 @@ class Server(ServerBase, Singleton):
             for task in before:
                 await task()
 
-            # Databse.
+            ## Databse.
             if db_warm:
                 await self.db.warm_all()
 
@@ -170,7 +170,7 @@ class Server(ServerBase, Singleton):
             for task in after:
                 await after()
 
-            # Database.
+            ## Database.
             await self.db.dispose_all()
 
 

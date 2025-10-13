@@ -9,7 +9,7 @@
 """
 
 
-from typing import Literal, NoReturn
+from typing import NoReturn, overload
 from http import HTTPStatus
 from fastapi import HTTPException, UploadFile as File
 from fastapi.params import (
@@ -35,6 +35,10 @@ __all__ = (
     'ServerExit',
     'ServerExitAPI',
     'exit_api',
+    'ServerBindInstanceDatabaseSuper',
+    'ServerBindInstanceDatabaseConnection',
+    'ServerBindInstanceDatabaseSession',
+    'ServerBindInstance',
     'ServerBind',
     'Bind'
 )
@@ -87,6 +91,71 @@ def exit_api(code: int = 400, text: str | None = None) -> NoReturn:
 
     # Throw exception.
     raise ServerExitAPI(code, text)
+
+
+class ServerBindInstanceDatabaseSuper(ServerBase):
+    """
+    Server API bind parameter build database instance super type.
+    """
+
+
+    def __getattr__(self, name: str) -> Depends:
+        """
+        Create dependencie instance of asynchronous database.
+
+        Parameters
+        ----------
+        name : Database engine name.
+        mode : Mode.
+            - `Literl['sess']`: Create ORM session instance.
+            - `Literl['conn']`: Create connection instance.
+
+        Returns
+        -------
+        Dependencie instance.
+        """
+
+
+        async def depend_func():
+            """
+            Dependencie function of asynchronous database.
+            """
+
+            # Parameter.
+            engine = ServerConfig.server.db[name]
+
+            # Context.
+            match self:
+                case ServerBindInstanceDatabaseConnection():
+                    async with engine.connect() as conn:
+                        yield conn
+                case ServerBindInstanceDatabaseSession():
+                    async with engine.orm.session() as sess:
+                        yield sess
+
+
+        # Create.
+        depend = Depends(depend_func)
+
+        return depend
+
+
+    @overload
+    def __getitem__(self, engine: str) -> DatabaseConnectionAsync: ...
+
+    __getitem__ = __getattr__
+
+
+class ServerBindInstanceDatabaseConnection(ServerBindInstanceDatabaseSuper, Singleton):
+    """
+    Server API bind parameter build database connection instance type.
+    """
+
+
+class ServerBindInstanceDatabaseSession(ServerBindInstanceDatabaseSuper, Singleton):
+    """
+    Server API bind parameter build database session instance type.
+    """
 
 
 class ServerBindInstance(ServerBase, Singleton):
@@ -256,47 +325,6 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     Server API bind parameter type.
     """
 
-
-    def create_depend_db(database: str, mode: Literal['sess', 'conn']) -> Depends:
-        """
-        Create dependencie type of asynchronous database.
-
-        Parameters
-        ----------
-        database : Database name.
-        mode : Mode.
-            - `Literl['sess']`: Create ORM session instance.
-            - `Literl['conn']`: Create connection instance.
-
-        Returns
-        -------
-        Dependencie type.
-        """
-
-
-        async def depend_db():
-            """
-            Dependencie function of asynchronous database.
-            """
-
-            # Parameter.
-            engine = ServerConfig.server.db[database]
-
-            # Context.
-            if mode == 'sess':
-                async with engine.orm.session() as sess:
-                    yield sess
-            elif mode == 'conn':
-                async with engine.connect() as conn:
-                    yield conn
-
-
-        # Create.
-        depend = Depends(depend_db)
-
-        return depend
-
-
     Depend = Depends
     Path = Path
     Query = Query
@@ -310,6 +338,8 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
     i = ServerBindInstance()
+    conn = ServerBindInstanceDatabaseConnection()
+    sess = ServerBindInstanceDatabaseSession()
 
 
 Bind = ServerBind

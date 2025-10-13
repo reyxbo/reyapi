@@ -11,7 +11,7 @@
 
 from typing import Any, Literal
 from datetime import datetime as Datetime
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import encode_jwt, is_hash_bcrypt
 from reykit.rtime import now, time_to
@@ -197,8 +197,6 @@ def build_auth_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
 
 auth_router = APIRouter()
-depend_auth_sess = Bind.create_depend_db('auth', 'sess')
-depend_auth_conn = Bind.create_depend_db('auth', 'conn')
 
 
 @auth_router.post('/sessions')
@@ -206,7 +204,7 @@ async def create_sessions(
     account: str = Bind.i.body,
     password: str = Bind.i.body,
     account_type: Literal['name', 'email', 'phone'] = Bind.Body('name'),
-    conn: Bind.Conn = depend_auth_conn
+    conn: Bind.Conn = Bind.conn.auth
 ) -> dict:
     """
     Create session.
@@ -300,3 +298,6 @@ async def create_sessions(
     data = {'token': token}
 
     return data
+
+
+def has_auth(request: Request) -> bool: ...
