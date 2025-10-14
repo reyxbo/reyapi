@@ -14,7 +14,7 @@ from datetime import datetime as Datetime
 from fastapi import APIRouter, Request
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import encode_jwt, is_hash_bcrypt
-from reykit.rtime import now, time_to
+from reykit.rtime import now
 
 from .rbase import ServerConfig, Bind, exit_api
 
@@ -74,7 +74,10 @@ class DatabaseORMTablePerm(rorm.Table):
     perm_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key_auto=True, comment='Permission ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='Permission name.')
     desc: str = rorm.Field(rorm.types.VARCHAR(500), comment='Permission description.')
-    api: str = rorm.Field(rorm.types.VARCHAR(1000), comment='API resource path regular expression "match" pattern.')
+    api: str = rorm.Field(
+        rorm.types.VARCHAR(1000),
+        comment=r'API method and resource path regular expression "match" pattern, case insensitive, format is "{method} {path}" (e.g. "GET /users").'
+    )
 
 
 class DatabaseORMTableUserRole(rorm.Table):

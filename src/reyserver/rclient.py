@@ -75,7 +75,6 @@ class ServerClient(ServerBase):
         # Request.
         response = request(url, json=json, check=True)
         response_dict = response.json()
-        print(response_dict)
         token = response_dict['token']
 
         return token

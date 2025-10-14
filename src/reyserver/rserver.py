@@ -9,7 +9,7 @@
 """
 
 
-from typing import Literal
+from typing import Any, Literal, Type
 from collections.abc import Sequence, Callable, Coroutine
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
@@ -19,11 +19,12 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from reydb import DatabaseAsync
+from reydb import rorm, DatabaseAsync, DatabaseEngineAsync
 from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
 from reykit.rrand import randchar
 
 from .rbase import ServerBase, ServerConfig, Bind
+from . import radmin
 
 
 __all__ = (
@@ -261,6 +262,46 @@ class Server(ServerBase, Singleton):
                 setattr(self.app, key, value)
 
 
+    def add_api_admin(self) -> None:
+        """
+        Add admin API.
+        """
+
+        # Add.
+        self.admin = radmin.ServerAdmin(self)
+
+
+    def add_admin_model(
+        self,
+        model: Type['radmin.ServerAdminModel'] | type[rorm.Model],
+        engine: DatabaseEngineAsync | str = None,
+        label: str | None = None,
+        name: str | None = None,
+        column: str | Sequence[str] | None = None,
+        **attrs: Any
+    ) -> None:
+        """
+        Add admin model type.
+
+        Parameters
+        ----------
+        model : Model type.
+            - `type[rorm.Model]`: Define as `ServerAdminModel`.
+        engine : Database engine or name.
+        label : Admin model class label.
+        name : Admin model name.
+        column : Admin model display column names.
+        attrs : Other admin model attributes.
+        """
+
+        # Check.
+        if not hasattr(self, 'admin'):
+            return
+
+        # Add.
+        self.admin.add_model(model, engine, label, name, column, **attrs)
+
+
     def add_api_auth(self, key: str | None = None, sess_seconds: int = 28800) -> None:
         """
         Add authentication API.
@@ -273,13 +314,23 @@ class Server(ServerBase, Singleton):
         sess_seconds : Session valid seconds.
         """
 
-        from .rauth import build_auth_db, auth_router
+        from .rauth import (
+            build_auth_db,
+            auth_router,
+            DatabaseORMTableUser,
+            DatabaseORMTableRole,
+            DatabaseORMTablePerm,
+            DatabaseORMTableUserRole,
+            DatabaseORMTableRolePerm
+        )
 
         # Parameter.
         if key is None:
             key = randchar(32)
 
-        # Build database.
+        # Database.
+        if 'auth' not in self.db:
+            throw(AssertionError, self.db)
         engine = self.db.auth
         build_auth_db(engine)
 
@@ -287,6 +338,13 @@ class Server(ServerBase, Singleton):
         self.api_auth_key = key
         self.api_auth_sess_seconds = sess_seconds
         self.app.include_router(auth_router, tags=['auth'])
+
+        ## Admin.
+        self.add_admin_model(DatabaseORMTableUser, engine, category='auth', name='User', column_list=['user_id', 'name'])
+        self.add_admin_model(DatabaseORMTableRole, engine, category='auth', name='Role', column_list=['role_id', 'name'])
+        self.add_admin_model(DatabaseORMTablePerm, engine, category='auth', name='Perm', column_list=['perm_id', 'name'])
+        self.add_admin_model(DatabaseORMTableUserRole, engine, category='auth', name='User Role')
+        self.add_admin_model(DatabaseORMTableRolePerm, engine, category='auth', name='Role Perm')
 
 
     def add_api_file(self, file_dir: str = 'file') -> None:
@@ -300,12 +358,23 @@ class Server(ServerBase, Singleton):
         prefix : File API path prefix.
         """
 
-        from .rfile import build_file_db, file_router
+        from .rfile import (
+            build_file_db,
+            file_router,
+            DatabaseORMTableInfo,
+            DatabaseORMTableData
+        )
 
-        # Build database.
+        # Database.
+        if 'file' not in self.db:
+            throw(AssertionError, self.db)
         engine = self.db.file
         build_file_db(engine)
 
         # Add.
         self.api_file_dir = file_dir
         self.app.include_router(file_router, tags=['file'])
+
+        ## Admin.
+        self.add_admin_model(DatabaseORMTableInfo, engine, category='file', name='Info', column_list=['file_id', 'name'])
+        self.add_admin_model(DatabaseORMTableData, engine, category='file', name='Data')

@@ -9,6 +9,7 @@
 
 Modules
 -------
+radmin : Admin methods.
 rall : All methods.
 rauth : Authentication methods.
 rbase : Base methods.

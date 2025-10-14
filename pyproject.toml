@@ -1,6 +1,6 @@
 [project]
 name = "reyserver"
-version = "1.1.56"
+version = "1.1.57"
 description = "Backend server method set."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -11,11 +11,10 @@ authors = [
 ]
 dependencies = [
     "email-validator",
-    "fastapi",
-    "python-multipart",
+    "fastapi[standard]",
     "reydb",
     "reykit",
-    "sqladmin",
+    "sqladmin[full]",
     "uvicorn[standard]"
 ]
 

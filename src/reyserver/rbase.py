@@ -11,7 +11,7 @@
 
 from typing import NoReturn, overload
 from http import HTTPStatus
-from fastapi import HTTPException, UploadFile as File
+from fastapi import HTTPException, Request, UploadFile as File
 from fastapi.params import (
     Depends,
     Path,
@@ -148,13 +148,13 @@ class ServerBindInstanceDatabaseSuper(ServerBase):
 
 class ServerBindInstanceDatabaseConnection(ServerBindInstanceDatabaseSuper, Singleton):
     """
-    Server API bind parameter build database connection instance type.
+    Server API bind parameter build database connection instance type, singleton mode.
     """
 
 
 class ServerBindInstanceDatabaseSession(ServerBindInstanceDatabaseSuper, Singleton):
     """
-    Server API bind parameter build database session instance type.
+    Server API bind parameter build database session instance type, singleton mode.
     """
 
 
@@ -325,7 +325,7 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     Server API bind parameter type.
     """
 
-    Depend = Depends
+    Request = Request
     Path = Path
     Query = Query
     Header = Header
@@ -334,6 +334,7 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     Form = Form
     Forms = Forms
     File = File
+    Depend = Depends
     JSON = DatabaseORMModel
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
