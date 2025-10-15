@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.ros import FileStore, get_md5
 
-from .rbase import ServerConfig, Bind, exit_api
+from .rbase import Bind, exit_api
 
 
 __all__ = (
@@ -212,7 +212,8 @@ async def upload_file(
     file: Bind.File = Bind.i.forms,
     name: str = Bind.i.forms_n,
     note: str = Bind.i.forms_n,
-    sess: Bind.Sess = Bind.sess.file
+    sess: Bind.Sess = Bind.sess.file,
+    server: Bind.Server = Bind.server
 ) -> DatabaseORMTableInfo:
     """
     Upload file.
@@ -229,7 +230,7 @@ async def upload_file(
     """
 
     # Handle parameter.
-    file_store = FileStore(ServerConfig.server.api_file_dir)
+    file_store = FileStore(server.api_file_dir)
     file_bytes = await file.read()
     file_md5 = get_md5(file_bytes)
     file_size = len(file_bytes)

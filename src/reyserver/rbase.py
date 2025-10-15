@@ -9,8 +9,9 @@
 """
 
 
-from typing import NoReturn, overload
+from typing import Type, NoReturn, overload
 from http import HTTPStatus
+from fastapi import FastAPI
 from fastapi import HTTPException, Request, UploadFile as File
 from fastapi.params import (
     Depends,
@@ -24,14 +25,13 @@ from fastapi.params import (
 )
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMModel, DatabaseORMSessionAsync
-from reykit.rbase import Base, Exit, StaticMeta, ConfigMeta, Singleton, throw
+from reykit.rbase import Base, Exit, StaticMeta, Singleton, throw
 
 from . import rserver
 
 
 __all__ = (
     'ServerBase',
-    'ServerConfig',
     'ServerExit',
     'ServerExitAPI',
     'exit_api',
@@ -48,15 +48,6 @@ class ServerBase(Base):
     """
     Server base type.
     """
-
-
-class ServerConfig(ServerBase, metaclass=ConfigMeta):
-    """
-    Config type.
-    """
-
-    server: 'rserver.Server'
-    'Server instance.'
 
 
 class ServerExit(ServerBase, Exit):
@@ -116,13 +107,13 @@ class ServerBindInstanceDatabaseSuper(ServerBase):
         """
 
 
-        async def depend_func():
+        async def depend_func(server: Bind.Server = Bind.server):
             """
             Dependencie function of asynchronous database.
             """
 
             # Parameter.
-            engine = ServerConfig.server.db[name]
+            engine = server.db[name]
 
             # Context.
             match self:
@@ -320,6 +311,26 @@ class ServerBindInstance(ServerBase, Singleton):
         return forms
 
 
+async def depend_server(request: Request) -> 'rserver.Server':
+    """
+    Dependencie function of now Server instance.
+
+    Parameters
+    ----------
+    request : Request.
+
+    Returns
+    -------
+    Server.
+    """
+
+    # Get.
+    app: FastAPI = request.app
+    server = app.extra['server']
+
+    return server
+
+
 class ServerBind(ServerBase, metaclass=StaticMeta):
     """
     Server API bind parameter type.
@@ -338,6 +349,8 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     JSON = DatabaseORMModel
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
+    Server = Type['rserver.Server']
+    server = Depends(depend_server)
     i = ServerBindInstance()
     conn = ServerBindInstanceDatabaseConnection()
     sess = ServerBindInstanceDatabaseSession()

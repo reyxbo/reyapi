@@ -9,14 +9,18 @@
 """
 
 
-from typing import Any, Literal
+from typing import Any, TypedDict, NotRequired, Literal
 from datetime import datetime as Datetime
+from re import PatternError
 from fastapi import APIRouter, Request
+from fastapi.params import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
-from reykit.rdata import encode_jwt, is_hash_bcrypt
+from reykit.rdata import encode_jwt, decode_jwt, is_hash_bcrypt
+from reykit.rre import search_batch
 from reykit.rtime import now
 
-from .rbase import ServerConfig, Bind, exit_api
+from .rbase import Bind, exit_api
 
 
 __all__ = (
@@ -27,6 +31,34 @@ __all__ = (
     'DatabaseORMTableRolePerm',
     'build_auth_db',
     'auth_router'
+)
+
+
+UserInfo = TypedDict(
+        'UserInfo',
+        {
+            'create_time': float,
+            'udpate_time': float,
+            'user_id': int,
+            'user_name': str,
+            'role_names': list[str],
+            'perm_names': list[str],
+            'perm_apis': list[str],
+            'email': str | None,
+            'phone': str | None,
+            'avatar': int | None,
+            'password': NotRequired[str]
+        }
+    )
+Token = TypedDict(
+    'Token',
+    {
+        'sub': int,
+        'iat': int,
+        'nbf': int,
+        'exp': int,
+        'user': UserInfo
+    }
 )
 
 
@@ -202,40 +234,50 @@ def build_auth_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 auth_router = APIRouter()
 
 
-@auth_router.post('/sessions')
-async def create_sessions(
-    account: str = Bind.i.body,
-    password: str = Bind.i.body,
-    account_type: Literal['name', 'email', 'phone'] = Bind.Body('name'),
-    conn: Bind.Conn = Bind.conn.auth
-) -> dict:
+async def get_user_info(
+    conn: Bind.Conn,
+    account: str,
+    account_type: Literal['name', 'email', 'phone'],
+    filter_invalid: bool = True
+) -> UserInfo | None:
     """
-    Create session.
+    Get user information.
 
     Parameters
     ----------
-    account : User account, name or email or phone.
-    password : User password.
+    conn: Asyncronous database connection.
+    account : User account.
     account_type : User account type.
+        - `Literal['name']`: User name.
+        - `Literal['email']`: User Email.
+        - `Literal['phone']`: User phone mumber.
+    filter_invalid : Whether filter invalid user.
 
     Returns
     -------
-    JSON with `token`.
+    User information or null.
     """
 
-    # Parameter.
-    key = ServerConfig.server.api_auth_key
-    sess_seconds = ServerConfig.server.api_auth_sess_seconds
+    # Parameters.
+    if filter_invalid:
+        sql_where = (
+            '    WHERE (\n'
+            f'        `{account_type}` = :account\n'
+            '        AND `is_valid` = 1\n'
+            '    )\n'
+        )
+    else:
+        sql_where = '    WHERE `{account_type}` = :account\n'
 
-    # Check.
+    # Get.
     sql = (
         'SELECT ANY_VALUE(`create_time`) AS `create_time`,\n'
+        '    ANY_VALUE(`phone`) AS `phone`,\n'
         '    ANY_VALUE(`update_time`) AS `update_time`,\n'
         '    ANY_VALUE(`user`.`user_id`) AS `user_id`,\n'
         '    ANY_VALUE(`user`.`name`) AS `user_name`,\n'
         '    ANY_VALUE(`password`) AS `password`,\n'
         '    ANY_VALUE(`email`) AS `email`,\n'
-        '    ANY_VALUE(`phone`) AS `phone`,\n'
         '    ANY_VALUE(`avatar`) AS `avatar`,\n'
         "    GROUP_CONCAT(DISTINCT `role`.`name` SEPARATOR ';') AS `role_names`,\n"
         "    GROUP_CONCAT(DISTINCT `perm`.`name` SEPARATOR ';') AS `perm_names`,\n"
@@ -243,8 +285,7 @@ async def create_sessions(
         'FROM (\n'
         '    SELECT `create_time`, `update_time`, `user_id`, `password`, `name`, `email`, `phone`, `avatar`\n'
         '    FROM `test`.`user`\n'
-        f'    WHERE `{account_type}` = :account\n'
-        '    LIMIT 1\n'
+        f'{sql_where}'
         ') as `user`\n'
         'LEFT JOIN (\n'
         '    SELECT `user_id`, `role_id`\n'
@@ -262,7 +303,7 @@ async def create_sessions(
         ') as `role_perm`\n'
         'ON `role_perm`.`role_id` = `role`.`role_id`\n'
         'LEFT JOIN (\n'
-        "    SELECT `perm_id`, `name`, CONCAT(`method`, ':', `path`) as `api`\n"
+        "    SELECT `perm_id`, `name`, `api`\n"
         '    FROM `test`.`perm`\n'
         ') AS `perm`\n'
         'ON `role_perm`.`perm_id` = `perm`.`perm_id`\n'
@@ -273,34 +314,136 @@ async def create_sessions(
         account=account
     )
 
-    # Check.
+    # Extract.
     if result.empty:
+        info = None
+    else:
+        row: dict[str, Datetime | Any] = result.to_row()
+        info: UserInfo = {
+            'create_time': row['create_time'].timestamp(),
+            'udpate_time': row['update_time'].timestamp(),
+            'user_id': row['user_id'],
+            'user_name': row['user_name'],
+            'role_names': row['role_names'].split(';'),
+            'perm_names': row['perm_names'].split(';'),
+            'perm_apis': row['perm_apis'].split(';'),
+            'email': row['email'],
+            'phone': row['phone'],
+            'avatar': row['avatar'],
+            'password': row['password']
+        }
+
+    return info
+
+
+@auth_router.post('/sessions')
+async def create_sessions(
+    account: str = Bind.i.body,
+    password: str = Bind.i.body,
+    account_type: Literal['name', 'email', 'phone'] = Bind.Body('name'),
+    conn: Bind.Conn = Bind.conn.auth,
+    server: Bind.Server = Bind.server
+) -> dict:
+    """
+    Create session.
+
+    Parameters
+    ----------
+    account : User account.
+    password : User password.
+    account_type : User account type.
+        - `Literal['name']`: User name.
+        - `Literal['email']`: User Email.
+        - `Literal['phone']`: User phone mumber.
+
+    Returns
+    -------
+    JSON with `token`.
+    """
+
+    # Parameter.
+    key = server.api_auth_key
+    sess_seconds = server.api_auth_sess_seconds
+
+    # User information.
+    info = await get_user_info(conn, account, account_type)
+
+    # Check.
+    if info is None:
         exit_api(401)
-    json: dict[str, Datetime | Any] = result.to_row()
-    if not is_hash_bcrypt(password, json['password']):
+    password_hash = info.pop('password')
+    if not is_hash_bcrypt(password, password_hash):
         exit_api(401)
 
     # JWT.
     now_timestamp_s = now('timestamp_s')
-    json['sub'] = json.pop('user_id')
-    json['iat'] = now_timestamp_s
-    json['nbf'] = now_timestamp_s
-    json['exp'] = now_timestamp_s + sess_seconds
-    json['role_names'] = json['role_names'].split(';')
-    json['perm_names'] = json['perm_names'].split(';')
-    perm_apis: list[str] = json['perm_apis'].split(';')
-    perm_api_dict = {}
-    for perm_api in perm_apis:
-        method, path = perm_api.split(':', 1)
-        paths: list = perm_api_dict.setdefault(method, [])
-        paths.append(path)
-    json['perm_apis'] = perm_api_dict
-    json['create_time'] = json['create_time'].timestamp()
-    json['update_time'] = json['update_time'].timestamp()
-    token = encode_jwt(json, key)
-    data = {'token': token}
+    user_id = info.pop('user_id')
+    data: Token = {
+        'sub': str(user_id),
+        'iat': now_timestamp_s,
+        'nbf': now_timestamp_s,
+        'exp': now_timestamp_s + sess_seconds,
+        'user': info
+    }
+    token = encode_jwt(data, key)
+    response = {'token': token}
 
-    return data
+    return response
 
 
-def has_auth(request: Request) -> bool: ...
+bearer = HTTPBearer(
+    scheme_name='RBACBearer',
+    description='Global authentication of based on RBAC model and Bearer framework.',
+    bearerFormat='JWT standard.',
+    auto_error=False
+)
+
+
+async def depend_auth(
+    request: Request,
+    server: Bind.Server = Bind.server,
+    auth: HTTPAuthorizationCredentials | None = Depends(bearer)
+) -> None:
+    """
+    Dependencie function of authentication.
+
+    Parameters
+    ----------
+    request : Request.
+    server : Server.
+    auth : Authentication.
+    """
+
+    # Check.
+    api_path = f'{request.method} {request.url.path}'
+    if (
+        not server.is_started_auth
+        or api_path == 'POST /sessions'
+    ):
+        return
+    if auth is None:
+        exit_api(401)
+
+    # Parameter.
+    key = server.api_auth_key
+    token = auth.credentials
+
+    # Decode.
+    token = decode_jwt(token, key)
+    if token is None:
+        exit_api(401)
+    token: Token
+    request.state.token = token
+
+    # Check.
+    perm_apis = token['user']['perm_apis']
+    perm_apis = [
+        f'^{pattern}$'
+        for pattern in perm_apis
+    ]
+    try:
+        result = search_batch(api_path, *perm_apis)
+    except PatternError:
+        exit_api(403)
+    if result is None:
+        exit_api(403)

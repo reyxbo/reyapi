@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
 from uvicorn import run as uvicorn_run
 from starlette.middleware.base import _StreamingResponse
 from fastapi import FastAPI, Request
+from fastapi.params import Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -23,7 +24,7 @@ from reydb import rorm, DatabaseAsync, DatabaseEngineAsync
 from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
 from reykit.rrand import randchar
 
-from .rbase import ServerBase, ServerConfig, Bind
+from .rbase import ServerBase, Bind
 from . import radmin
 
 
@@ -68,6 +69,8 @@ class Server(ServerBase, Singleton):
         debug : Whether use development mode debug server.
         """
 
+        from .rauth import depend_auth
+
         # Parameter.
         if type(ssl_cert) != type(ssl_key):
             throw(AssertionError, ssl_cert, ssl_key)
@@ -76,13 +79,14 @@ class Server(ServerBase, Singleton):
         elif iscoroutinefunction(depend):
             depend = (depend,)
         depend = [
+            Bind.Depend(depend_auth)
+        ] + [
             Bind.Depend(task)
             for task in depend
         ]
         lifespan = self.__create_lifespan(before, after, db_warm)
 
         # Build.
-        ServerConfig.server = self
         self.db = db
         self.ssl_cert = ssl_cert
         self.ssl_key = ssl_key
@@ -91,7 +95,8 @@ class Server(ServerBase, Singleton):
         self.app = FastAPI(
             dependencies=depend,
             lifespan=lifespan,
-            debug=debug
+            debug=debug,
+            server=self
         )
 
         if public is not None:
@@ -107,6 +112,8 @@ class Server(ServerBase, Singleton):
         self.__add_default_middleware()
 
         # API.
+        self.is_started_auth: bool = False
+        'Whether start authentication.'
         self.api_auth_key: str
         'Authentication API JWT encryption key.'
         self.api_auth_sess_seconds: int
@@ -185,7 +192,7 @@ class Server(ServerBase, Singleton):
 
         # Add.
         @self.wrap_middleware
-        async def foo(
+        async def middleware(
             request: Request,
             call_next: Callable[[Request], Coroutine[None, None, _StreamingResponse]]
         ) -> _StreamingResponse:
@@ -262,6 +269,16 @@ class Server(ServerBase, Singleton):
                 setattr(self.app, key, value)
 
 
+    def add_api_base(self) -> None:
+        """
+        Add base API.
+        """
+        from fastapi import Request
+        @self.app.get('/test')
+        async def test(request: Request) -> str:
+            return 'test'
+
+
     def add_api_admin(self) -> None:
         """
         Add admin API.
@@ -315,13 +332,14 @@ class Server(ServerBase, Singleton):
         """
 
         from .rauth import (
-            build_auth_db,
-            auth_router,
             DatabaseORMTableUser,
             DatabaseORMTableRole,
             DatabaseORMTablePerm,
             DatabaseORMTableUserRole,
-            DatabaseORMTableRolePerm
+            DatabaseORMTableRolePerm,
+            build_auth_db,
+            auth_router,
+            depend_auth
         )
 
         # Parameter.
@@ -338,6 +356,7 @@ class Server(ServerBase, Singleton):
         self.api_auth_key = key
         self.api_auth_sess_seconds = sess_seconds
         self.app.include_router(auth_router, tags=['auth'])
+        self.is_started_auth = True
 
         ## Admin.
         self.add_admin_model(DatabaseORMTableUser, engine, category='auth', name='User', column_list=['user_id', 'name'])
