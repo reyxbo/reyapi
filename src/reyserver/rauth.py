@@ -415,6 +415,7 @@ async def depend_auth(
     """
 
     # Check.
+    print(11111111111111111)
     api_path = f'{request.method} {request.url.path}'
     if (
         not server.is_started_auth
@@ -429,14 +430,14 @@ async def depend_auth(
     token = auth.credentials
 
     # Decode.
-    token = decode_jwt(token, key)
-    if token is None:
+    json = decode_jwt(token, key)
+    if json is None:
         exit_api(401)
-    token: Token
-    request.state.token = token
+    json: Token
+    request.state.user = json['user']
 
     # Check.
-    perm_apis = token['user']['perm_apis']
+    perm_apis = json['user']['perm_apis']
     perm_apis = [
         f'^{pattern}$'
         for pattern in perm_apis

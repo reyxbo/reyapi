@@ -12,7 +12,9 @@
 from typing import Any, Type
 from collections.abc import Sequence
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from fastapi import Request
 from sqladmin import Admin, ModelView
+from sqladmin.authentication import AuthenticationBackend
 from reydb import DatabaseEngineAsync, rorm
 from reykit.rbase import Singleton
 
@@ -23,11 +25,12 @@ from . import rserver
 __all__ = (
     'ServerAdminModel',
     'ServerAdminModelView',
-    'ServerAdminModelViewStats'
+    'ServerAdminModelViewStats',
+    'ServerAdmin'
 )
 
 
-class ServerAdminModel(ModelView):
+class ServerAdminModel(ServerBase, ModelView):
     """
     Server admin model type.
     """
@@ -48,6 +51,40 @@ class ServerAdminModelViewStats(ServerAdminModelView):
     """
 
     column_list = ['item', 'value', 'comment']
+
+
+# class ServerAdminAuthentication(ServerAdmin, AuthenticationBackend):
+#     """
+#     Server admin authentication type.
+#     """
+
+
+#     async def authenticate(self, request: Request) -> bool:
+#         """
+#         Authenticate request.
+
+#         Parameters
+#         ----------
+#         request : Request.
+#         """
+
+#         # 
+#         ...
+#         request.session['token']
+#         ...
+
+
+#     async def login(self, request: Request) -> bool:
+#         form = await request.form()
+#         form['username']
+#         form['password']
+#         ...
+#         request.session['token'] = ...
+#         ...
+
+
+#     async def logout(self, request: Request) -> None:
+#         request.session.clear()
 
 
 class ServerAdmin(ServerBase, Singleton):
@@ -73,7 +110,13 @@ class ServerAdmin(ServerBase, Singleton):
         'Admin API model bind database engine dictionary.'
         Session = async_sessionmaker()
         Session.configure(binds=self.api_admin_binds)
-        self.admin = Admin(self.server.app, session_maker=Session)
+        auth = self.__create_auth()
+        self.admin = Admin(
+            self.server.app,
+            session_maker=Session,
+            authentication_backend=auth
+        )
+
 
 
     def add_model(

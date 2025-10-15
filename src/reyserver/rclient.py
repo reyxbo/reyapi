@@ -9,8 +9,10 @@
 """
 
 
-from typing import TypedDict, Literal
+from typing import TypedDict
 from datetime import datetime as Datetime
+from requests import Response
+from reykit.rbase import copy_type_hints
 from reykit.ros import File, Folder, overload
 from reykit.rnet import join_url, request, get_response_file_name
 
@@ -31,31 +33,40 @@ class ServerClient(ServerBase):
     """
 
 
-    def __init__(self, url: str) -> None:
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        url: str = 'http://127.0.0.1:8000',
+    ) -> None:
         """
         Build instance attributes.
 
         Parameters
         ----------
+        username: User name.
+        password: User password.
         url : Server url.
         """
 
         # Build.
+        self.username = username
+        self.password = password
         self.url = url
+        self.token = self.create_session(username, password)
 
 
     def create_session(
         self,
-        account: str,
-        password: str,
-        account_type: Literal['name', 'email', 'phone'] = 'name'
+        username: str,
+        password: str
     ) -> str:
         """
         Create session.
 
         Parameters
         ----------
-        account : User account, name or email or phone.
+        account : User name.
         password : User password.
         account_type : User account type.
 
@@ -67,9 +78,8 @@ class ServerClient(ServerBase):
         # Parameter.
         url = join_url(self.url, 'sessions')
         json = {
-            'account': account,
-            'password': password,
-            'account_type': account_type
+            'account': username,
+            'password': password
         }
 
         # Request.
@@ -78,6 +88,45 @@ class ServerClient(ServerBase):
         token = response_dict['token']
 
         return token
+
+
+    def _request(self, *args, **kwargs) -> Response:
+        """
+        Send request.
+
+        Parameters
+        ----------
+        args : Position arguments.
+        kwargs : Keyword arguments.
+
+        Returns
+        -------
+        Response.
+        """
+
+        # Parameter.
+        headers = kwargs.setdefault('headers', {})
+        headers['Authorization'] = f'Bearer {self.token}'
+        kwargs['check'] = list(range(200, 400))
+        kwargs['check'].append(401)
+
+        # Request.
+        response = request(*args, **kwargs)
+
+        # Check.
+        if response.status_code != 401:
+            return response
+
+        # Try request.
+        self.token = self.create_session(self.username, self.password)
+        headers['Authorization'] = f'Bearer {self.token}'
+        kwargs['check'] = True
+        response = request(*args, **kwargs)
+
+        return response
+
+
+    request = copy_type_hints(_request, request)
 
 
     def upload_file(
@@ -128,7 +177,7 @@ class ServerClient(ServerBase):
         # Request.
         data = {'name': file_name, 'note': note}
         files = {'file': file_bytes}
-        response = request(url, data=data, files=files, check=True)
+        response = self.request(url, data=data, files=files, check=True)
 
         ## Extract.
         response_json = response.json()
@@ -177,7 +226,7 @@ class ServerClient(ServerBase):
         url = join_url(self.url, 'files', file_id, 'download')
 
         # Request.
-        response = request(url, check=True)
+        response = self.request(url, check=True)
         file_bytes = response.content
 
         # Not save.
@@ -215,7 +264,7 @@ class ServerClient(ServerBase):
         url = join_url(self.url, 'files', file_id)
 
         # Request.
-        response = request(url, check=True)
+        response = self.request(url, check=True)
         response_dict = response.json()
 
         return response_dict
