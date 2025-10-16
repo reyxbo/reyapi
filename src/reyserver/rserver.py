@@ -9,7 +9,7 @@
 """
 
 
-from typing import Any, Literal, Type
+from typing import Literal
 from collections.abc import Sequence, Callable, Coroutine
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
@@ -19,7 +19,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from reydb import rorm, DatabaseAsync, DatabaseEngineAsync
+from reydb import DatabaseAsync
 from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
 from reykit.rrand import randchar
 
@@ -272,29 +272,10 @@ class Server(ServerBase, Singleton):
         Add base API.
         """
 
-        from fastapi import Depends, Form
-        from time import time
+        from .rbase import router_base
 
-        form = Form()
-        def func():
-            return int(time())
-        depend = Depends(func)
-        @self.app.get('/test')
-        async def test(a: int = form, b: int = form) -> str:
-            print(a, b)
-            return 'test'
-        @self.app.get('/test1')
-        async def test1(a: int = depend, b: int = depend) -> str:
-            print(a, b)
-            return 'test'
-        @self.app.get('/test2')
-        async def test2(a: int = form, b: int = depend) -> str:
-            print(a, b)
-            return 'test'
-        @self.app.get('/test3')
-        async def test3(a: int = form, b: int = depend) -> str:
-            print(a, b)
-            return 'test'
+        # Add.
+        self.app.include_router(router_base, tags=['test'])
 
 
     def add_api_auth(self, key: str | None = None, sess_seconds: int = 28800) -> None:
@@ -338,7 +319,6 @@ class Server(ServerBase, Singleton):
         file_dir : File API store directory path.
         """
 
-        from .rauth import depend_auth
         from .rfile import build_db_file, router_file
 
         # Database.
@@ -349,4 +329,28 @@ class Server(ServerBase, Singleton):
 
         # Add.
         self.api_file_dir = file_dir
-        self.app.include_router(router_file, tags=['file'])
+        self.app.include_router(router_file, tags=['file'], dependencies=(Bind.token,))
+
+
+async def depend_server(request: Request) -> Server:
+    """
+    Dependencie function of now Server instance.
+
+    Parameters
+    ----------
+    request : Request.
+
+    Returns
+    -------
+    Server.
+    """
+
+    # Get.
+    app: FastAPI = request.app
+    server = app.extra['server']
+
+    return server
+
+
+Bind.Server = Server
+Bind.server = Bind.Depend(depend_server)

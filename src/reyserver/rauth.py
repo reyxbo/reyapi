@@ -11,9 +11,7 @@
 
 from typing import Any, TypedDict, NotRequired, Literal
 from datetime import datetime as Datetime
-from re import PatternError
 from fastapi import APIRouter, Request
-from fastapi.params import Depends
 from fastapi.security import OAuth2PasswordBearer
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import encode_jwt, decode_jwt, is_hash_bcrypt
@@ -34,8 +32,8 @@ __all__ = (
 )
 
 
-UserInfo = TypedDict(
-    'UserInfo',
+UserData = TypedDict(
+    'UserData',
     {
         'create_time': float,
         'udpate_time': float,
@@ -50,19 +48,19 @@ UserInfo = TypedDict(
         'password': NotRequired[str]
     }
 )
-TokenInfo = TypedDict(
-    'TokenInfo',
+TokenData = TypedDict(
+    'TokenData',
     {
         'sub': int,
         'iat': int,
         'nbf': int,
         'exp': int,
-        'user': UserInfo
+        'user': UserData
     }
 )
 Token = str
-ResponseToken = TypedDict(
-    'ResponseToken',
+JSONToken = TypedDict(
+    'JSONToken',
     {
         'access_token': Token,
         'token_type': Literal['Bearer']
@@ -241,19 +239,19 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
 bearer = OAuth2PasswordBearer(
     tokenUrl='/token',
-    scheme_name='RBACBearer',
-    description='Global authentication of based on RBAC model and Bearer framework.',
+    scheme_name='OAuth2Password',
+    description='Authentication of OAuth2 password model.',
     auto_error=False
 )
 
 
-async def depend_auth(
+async def depend_token(
     request: Request,
     server: Bind.Server = Bind.server,
-    token: Token | None = Depends(bearer)
-) -> UserInfo:
+    token: Token | None = Bind.Depend(bearer)
+) -> TokenData:
     """
-    Dependencie function of authentication.
+    Dependencie function of authentication token.
     If the verification fails, then response status code is 401 or 403.
 
     Parameters
@@ -264,7 +262,7 @@ async def depend_auth(
 
     Returns
     -------
-    User information
+    Token data.
     """
 
     # Check.
@@ -278,18 +276,17 @@ async def depend_auth(
     api_path = f'{request.method} {request.url.path}'
 
     # Cache.
-    user: UserInfo | None = getattr(request.state, 'user', None)
+    token_data: UserData | None = getattr(request.state, 'token_data', None)
 
     # Decode.
-    if user is None:
-        json: TokenInfo | None = decode_jwt(token, key)
-        if json is None:
+    if token_data is None:
+        token_data: TokenData | None = decode_jwt(token, key)
+        if token_data is None:
             exit_api(401)
-        user = json['user']
-        request.state.user = user
+        request.state.token_data = token_data
 
     # Authentication.
-    perm_apis = json['user']['perm_apis']
+    perm_apis = token_data['user']['perm_apis']
     perm_apis = [
         f'^{pattern}$'
         for pattern in perm_apis
@@ -298,20 +295,22 @@ async def depend_auth(
     if result is None:
         exit_api(403)
 
-    return user
+    return token_data
 
+
+Bind.token = Bind.Depend(depend_token)
 
 router_auth = APIRouter()
 
 
-async def get_user_info(
+async def get_user_data(
     conn: Bind.Conn,
     account: str,
-    account_type: Literal['name', 'email', 'phone'],
+    account_type: Literal['user_id', 'name', 'email', 'phone'] = 'name',
     filter_invalid: bool = True
-) -> UserInfo | None:
+) -> UserData | None:
     """
-    Get user information.
+    Get user data.
 
     Parameters
     ----------
@@ -325,7 +324,7 @@ async def get_user_info(
 
     Returns
     -------
-    User information or null.
+    User data or null.
     """
 
     # Parameters.
@@ -356,6 +355,7 @@ async def get_user_info(
         '    SELECT `create_time`, `update_time`, `user_id`, `password`, `name`, `email`, `phone`, `avatar`\n'
         '    FROM `test`.`user`\n'
         f'{sql_where}'
+        '    LIMIT 1\n'
         ') as `user`\n'
         'LEFT JOIN (\n'
         '    SELECT `user_id`, `role_id`\n'
@@ -389,7 +389,7 @@ async def get_user_info(
         info = None
     else:
         row: dict[str, Datetime | Any] = result.to_row()
-        info: UserInfo = {
+        info: UserData = {
             'create_time': row['create_time'].timestamp(),
             'udpate_time': row['update_time'].timestamp(),
             'user_id': row['user_id'],
@@ -412,9 +412,9 @@ async def create_sessions(
     password: str = Bind.i.form,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
-) -> ResponseToken:
+) -> JSONToken:
     """
-    Create session.
+    Create token.
 
     Parameters
     ----------
@@ -430,25 +430,25 @@ async def create_sessions(
     key = server.api_auth_key
     sess_seconds = server.api_auth_sess_seconds
 
-    # User information.
-    info = await get_user_info(conn, username)
+    # User data.
+    user_data = await get_user_data(conn, username)
 
     # Check.
-    if info is None:
+    if user_data is None:
         exit_api(401)
-    password_hash = info.pop('password')
+    password_hash = user_data.pop('password')
     if not is_hash_bcrypt(password, password_hash):
         exit_api(401)
 
     # Response.
     now_timestamp_s = now('timestamp_s')
-    user_id = info.pop('user_id')
-    data: TokenInfo = {
+    user_id = user_data.pop('user_id')
+    data: TokenData = {
         'sub': str(user_id),
         'iat': now_timestamp_s,
         'nbf': now_timestamp_s,
         'exp': now_timestamp_s + sess_seconds,
-        'user': info
+        'user': user_data
     }
     token = encode_jwt(data, key)
     response = {

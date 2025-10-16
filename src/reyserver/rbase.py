@@ -9,9 +9,9 @@
 """
 
 
-from typing import Type, NoReturn, overload
+from typing import Literal, Type, NoReturn, overload
 from http import HTTPStatus
-from fastapi import FastAPI
+from fastapi import APIRouter
 from fastapi import HTTPException, Request, UploadFile as File
 from fastapi.params import (
     Depends,
@@ -24,7 +24,7 @@ from fastapi.params import (
     File as Forms
 )
 from reydb.rconn import DatabaseConnectionAsync
-from reydb.rorm import DatabaseORMModel, DatabaseORMSessionAsync
+from reydb.rorm import DatabaseORMSessionAsync
 from reykit.rbase import Base, Exit, StaticMeta, Singleton, throw
 
 from . import rserver
@@ -311,49 +311,82 @@ class ServerBindInstance(ServerBase, Singleton):
         return forms
 
 
-async def depend_server(request: Request) -> 'rserver.Server':
-    """
-    Dependencie function of now Server instance.
-
-    Parameters
-    ----------
-    request : Request.
-
-    Returns
-    -------
-    Server.
-    """
-
-    # Get.
-    app: FastAPI = request.app
-    server = app.extra['server']
-
-    return server
-
-
 class ServerBind(ServerBase, metaclass=StaticMeta):
     """
     Server API bind parameter type.
     """
 
     Request = Request
+    'Reqeust instance dependency type.'
     Path = Path
+    'URL source path dependency type.'
     Query = Query
+    'URL query parameter dependency type.'
     Header = Header
+    'Request header parameter dependency type.'
     Cookie = Cookie
+    'Request header cookie parameter dependency type.'
     Body = Body
+    'Request body JSON parameter dependency type.'
     Form = Form
+    'Request body form parameter dependency type.'
     Forms = Forms
+    'Request body multiple forms parameter dependency type.'
     File = File
+    'Verify file type.'
     Depend = Depends
-    JSON = DatabaseORMModel
+    'Dependency type.'
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
     Server = Type['rserver.Server']
-    server = Depends(depend_server)
+    'Server type.'
+    server: Depend
+    'Server instance dependency type.'
     i = ServerBindInstance()
+    'Server API bind parameter build instance.'
     conn = ServerBindInstanceDatabaseConnection()
+    'Server API bind parameter asynchronous database connection.'
     sess = ServerBindInstanceDatabaseSession()
+    'Server API bind parameter asynchronous database session.'
+    token: Depend
+    'Server authentication token dependency type.'
 
 
 Bind = ServerBind
+
+router_base = APIRouter()
+
+
+@router_base.get('/test')
+def test() -> Literal['test']:
+    """
+    Test.
+
+    Returns
+    -------
+    Text `test`.
+    """
+
+    # Resposne.
+    response = 'test'
+
+    return response
+
+
+@router_base.post('/test/echo')
+def echo(data: dict = Bind.i.body) -> dict:
+    """
+    Echo test.
+
+    Paremeters
+    ----------
+    data : Echo data.
+
+    Returns
+    -------
+    Echo data.
+    """
+
+    # Resposne.
+
+    return data
