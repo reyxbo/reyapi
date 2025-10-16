@@ -216,16 +216,50 @@ class Server(ServerBase, Singleton):
             return response
 
 
-    def run(self) -> None:
+    def run(
+        self,
+        host: str = '127.0.0.1',
+        port: int = 1024,
+        app: str | None = None,
+        workers: int = 1
+    ) -> None:
         """
         Run server.
+
+        Parameters
+        ----------
+        host : Server host.
+        port: Server port.
+        app : Application path, format is `Module[.Sub....]:Variable[.Attributre....]` (e.g. `module.sub:server.app`).
+            - `None`: Cannot use parameter `workers`.
+        workers: Number of server work processes.
+
+        Examples
+        --------
+        >>> server = Server(db)
+
+        Single work process.
+        >>> server.run()
+
+        Multiple work processes.
+        >>> server = Server(db)
+        >>> if __name__ == '__main__':
+        >>>     server('module.sub:server.app')
         """
+
+        # Parameter.
+        if app is None:
+            app = self.app
 
         # Run.
         uvicorn_run(
-            self.app,
+            app,
+            host=host,
+            port=port,
+            workers=workers,
             ssl_certfile=self.ssl_cert,
-            ssl_keyfile=self.ssl_key
+            ssl_keyfile=self.ssl_key,
+            # factory=True
         )
 
 
