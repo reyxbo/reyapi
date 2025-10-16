@@ -221,6 +221,7 @@ class Server(ServerBase, Singleton):
         host: str = '127.0.0.1',
         port: int = 1024,
         app: str | None = None,
+        factory: bool = False,
         workers: int = 1
     ) -> None:
         """
@@ -232,6 +233,7 @@ class Server(ServerBase, Singleton):
         port: Server port.
         app : Application path, format is `Module[.Sub....]:Variable[.Attributre....]` (e.g. `module.sub:server.app`).
             - `None`: Cannot use parameter `workers`.
+        factory : Whether parameter `app` is factory function.
         workers: Number of server work processes.
 
         Examples
@@ -259,7 +261,7 @@ class Server(ServerBase, Singleton):
             workers=workers,
             ssl_certfile=self.ssl_cert,
             ssl_keyfile=self.ssl_key,
-            # factory=True
+            factory=factory
         )
 
 
