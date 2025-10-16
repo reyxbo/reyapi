@@ -16,7 +16,6 @@ from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
 from uvicorn import run as uvicorn_run
 from starlette.middleware.base import _StreamingResponse
 from fastapi import FastAPI, Request
-from fastapi.params import Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -25,7 +24,6 @@ from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
 from reykit.rrand import randchar
 
 from .rbase import ServerBase, Bind
-from . import radmin
 
 
 __all__ = (
@@ -69,8 +67,6 @@ class Server(ServerBase, Singleton):
         debug : Whether use development mode debug server.
         """
 
-        from .rauth import depend_auth
-
         # Parameter.
         if type(ssl_cert) != type(ssl_key):
             throw(AssertionError, ssl_cert, ssl_key)
@@ -79,8 +75,6 @@ class Server(ServerBase, Singleton):
         elif iscoroutinefunction(depend):
             depend = (depend,)
         depend = [
-            Bind.Depend(depend_auth)
-        ] + [
             Bind.Depend(task)
             for task in depend
         ]
@@ -90,8 +84,6 @@ class Server(ServerBase, Singleton):
         self.db = db
         self.ssl_cert = ssl_cert
         self.ssl_key = ssl_key
-
-        ## App.
         self.app = FastAPI(
             dependencies=depend,
             lifespan=lifespan,
@@ -99,17 +91,18 @@ class Server(ServerBase, Singleton):
             server=self
         )
 
+        # Public file.
         if public is not None:
             subapp = StaticFiles(directory=public, html=True)
             self.app.mount('/', subapp)
-        self.wrap_middleware = self.app.middleware('http')
-        'Decorator, add middleware to APP.'
 
         # Middleware
+        self.wrap_middleware = self.app.middleware('http')
+        'Decorator, add middleware to APP.'
         self.app.add_middleware(GZipMiddleware)
         if not debug:
             self.app.add_middleware(HTTPSRedirectMiddleware)
-        self.__add_default_middleware()
+        self.__add_base_middleware()
 
         # API.
         self.is_started_auth: bool = False
@@ -185,19 +178,19 @@ class Server(ServerBase, Singleton):
         return lifespan
 
 
-    def __add_default_middleware(self) -> None:
+    def __add_base_middleware(self) -> None:
         """
-        Add default handle middleware.
+        Add base middleware.
         """
 
         # Add.
         @self.wrap_middleware
-        async def middleware(
+        async def base_middleware(
             request: Request,
             call_next: Callable[[Request], Coroutine[None, None, _StreamingResponse]]
         ) -> _StreamingResponse:
             """
-            Default handle middleware.
+            Base middleware.
 
             Parameters
             ----------
@@ -217,6 +210,8 @@ class Server(ServerBase, Singleton):
                 and request.method == 'POST'
             ):
                 response.status_code = 201
+            elif response.status_code == 401:
+                response.headers.setdefault('WWW-Authenticate', 'Bearer')
 
             return response
 
@@ -232,6 +227,9 @@ class Server(ServerBase, Singleton):
             ssl_certfile=self.ssl_cert,
             ssl_keyfile=self.ssl_key
         )
+
+
+    __call__ = run
 
 
     def set_doc(
@@ -273,50 +271,30 @@ class Server(ServerBase, Singleton):
         """
         Add base API.
         """
-        from fastapi import Request
+
+        from fastapi import Depends, Form
+        from time import time
+
+        form = Form()
+        def func():
+            return int(time())
+        depend = Depends(func)
         @self.app.get('/test')
-        async def test(request: Request) -> str:
+        async def test(a: int = form, b: int = form) -> str:
+            print(a, b)
             return 'test'
-
-
-    def add_api_admin(self) -> None:
-        """
-        Add admin API.
-        """
-
-        # Add.
-        self.admin = radmin.ServerAdmin(self)
-
-
-    def add_admin_model(
-        self,
-        model: Type['radmin.ServerAdminModel'] | type[rorm.Model],
-        engine: DatabaseEngineAsync | str = None,
-        label: str | None = None,
-        name: str | None = None,
-        column: str | Sequence[str] | None = None,
-        **attrs: Any
-    ) -> None:
-        """
-        Add admin model type.
-
-        Parameters
-        ----------
-        model : Model type.
-            - `type[rorm.Model]`: Define as `ServerAdminModel`.
-        engine : Database engine or name.
-        label : Admin model class label.
-        name : Admin model name.
-        column : Admin model display column names.
-        attrs : Other admin model attributes.
-        """
-
-        # Check.
-        if not hasattr(self, 'admin'):
-            return
-
-        # Add.
-        self.admin.add_model(model, engine, label, name, column, **attrs)
+        @self.app.get('/test1')
+        async def test1(a: int = depend, b: int = depend) -> str:
+            print(a, b)
+            return 'test'
+        @self.app.get('/test2')
+        async def test2(a: int = form, b: int = depend) -> str:
+            print(a, b)
+            return 'test'
+        @self.app.get('/test3')
+        async def test3(a: int = form, b: int = depend) -> str:
+            print(a, b)
+            return 'test'
 
 
     def add_api_auth(self, key: str | None = None, sess_seconds: int = 28800) -> None:
@@ -331,16 +309,7 @@ class Server(ServerBase, Singleton):
         sess_seconds : Session valid seconds.
         """
 
-        from .rauth import (
-            DatabaseORMTableUser,
-            DatabaseORMTableRole,
-            DatabaseORMTablePerm,
-            DatabaseORMTableUserRole,
-            DatabaseORMTableRolePerm,
-            build_auth_db,
-            auth_router,
-            depend_auth
-        )
+        from .rauth import build_db_auth, router_auth
 
         # Parameter.
         if key is None:
@@ -350,20 +319,13 @@ class Server(ServerBase, Singleton):
         if 'auth' not in self.db:
             throw(AssertionError, self.db)
         engine = self.db.auth
-        build_auth_db(engine)
+        build_db_auth(engine)
 
         # Add.
         self.api_auth_key = key
         self.api_auth_sess_seconds = sess_seconds
-        self.app.include_router(auth_router, tags=['auth'])
+        self.app.include_router(router_auth, tags=['auth'])
         self.is_started_auth = True
-
-        ## Admin.
-        self.add_admin_model(DatabaseORMTableUser, engine, category='auth', name='User', column_list=['user_id', 'name'])
-        self.add_admin_model(DatabaseORMTableRole, engine, category='auth', name='Role', column_list=['role_id', 'name'])
-        self.add_admin_model(DatabaseORMTablePerm, engine, category='auth', name='Perm', column_list=['perm_id', 'name'])
-        self.add_admin_model(DatabaseORMTableUserRole, engine, category='auth', name='User Role')
-        self.add_admin_model(DatabaseORMTableRolePerm, engine, category='auth', name='Role Perm')
 
 
     def add_api_file(self, file_dir: str = 'file') -> None:
@@ -374,26 +336,17 @@ class Server(ServerBase, Singleton):
         Parameters
         ----------
         file_dir : File API store directory path.
-        prefix : File API path prefix.
         """
 
-        from .rfile import (
-            build_file_db,
-            file_router,
-            DatabaseORMTableInfo,
-            DatabaseORMTableData
-        )
+        from .rauth import depend_auth
+        from .rfile import build_db_file, router_file
 
         # Database.
         if 'file' not in self.db:
             throw(AssertionError, self.db)
         engine = self.db.file
-        build_file_db(engine)
+        build_db_file(engine)
 
         # Add.
         self.api_file_dir = file_dir
-        self.app.include_router(file_router, tags=['file'])
-
-        ## Admin.
-        self.add_admin_model(DatabaseORMTableInfo, engine, category='file', name='Info', column_list=['file_id', 'name'])
-        self.add_admin_model(DatabaseORMTableData, engine, category='file', name='Data')
+        self.app.include_router(router_file, tags=['file'])

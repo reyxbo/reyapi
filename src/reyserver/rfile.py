@@ -20,8 +20,8 @@ from .rbase import Bind, exit_api
 __all__ = (
     'DatabaseORMTableInfo',
     'DatabaseORMTableData',
-    'build_file_db',
-    'file_router'
+    'build_db_file',
+    'router_file'
 )
 
 
@@ -51,7 +51,7 @@ class DatabaseORMTableData(rorm.Table):
     path: str = rorm.Field(rorm.types.VARCHAR(4095), not_null=True, comment='File disk storage path.')
 
 
-def build_file_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
+def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
     Check and build `file` database tables.
 
@@ -177,10 +177,10 @@ def build_file_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     engine.sync_engine.build.build(tables=tables, views=views, views_stats=views_stats, skip=True)
 
 
-file_router = APIRouter()
+router_file = APIRouter()
 
 
-@file_router.get('/files/{file_id}')
+@router_file.get('/files/{file_id}')
 async def get_file_info(
     file_id: int = Bind.i.path,
     sess: Bind.Sess = Bind.sess.file
@@ -207,7 +207,7 @@ async def get_file_info(
     return table_info
 
 
-@file_router.post('/files')
+@router_file.post('/files')
 async def upload_file(
     file: Bind.File = Bind.i.forms,
     name: str = Bind.i.forms_n,
@@ -262,7 +262,7 @@ async def upload_file(
     return table_info
 
 
-@file_router.get('/files/{file_id}/download')
+@router_file.get('/files/{file_id}/download')
 async def download_file(
     file_id: int = Bind.i.path,
     conn: Bind.Conn = Bind.conn.file

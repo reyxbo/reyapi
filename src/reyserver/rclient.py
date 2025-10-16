@@ -53,22 +53,21 @@ class ServerClient(ServerBase):
         self.username = username
         self.password = password
         self.url = url
-        self.token = self.create_session(username, password)
+        self.token = self.get_token(username, password)
 
 
-    def create_session(
+    def get_token(
         self,
         username: str,
         password: str
     ) -> str:
         """
-        Create session.
+        Get token.
 
         Parameters
         ----------
-        account : User name.
+        username : User name.
         password : User password.
-        account_type : User account type.
 
         Returns
         -------
@@ -76,14 +75,14 @@ class ServerClient(ServerBase):
         """
 
         # Parameter.
-        url = join_url(self.url, 'sessions')
-        json = {
-            'account': username,
+        url = join_url(self.url, 'token')
+        data = {
+            'username': username,
             'password': password
         }
 
         # Request.
-        response = request(url, json=json, check=True)
+        response = request(url, data=data, check=True)
         response_dict = response.json()
         token = response_dict['token']
 

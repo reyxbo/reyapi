@@ -14,7 +14,7 @@ from datetime import datetime as Datetime
 from re import PatternError
 from fastapi import APIRouter, Request
 from fastapi.params import Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import OAuth2PasswordBearer
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import encode_jwt, decode_jwt, is_hash_bcrypt
 from reykit.rre import search_batch
@@ -29,35 +29,43 @@ __all__ = (
     'DatabaseORMTablePerm',
     'DatabaseORMTableUserRole',
     'DatabaseORMTableRolePerm',
-    'build_auth_db',
-    'auth_router'
+    'build_db_auth',
+    'router_auth'
 )
 
 
 UserInfo = TypedDict(
-        'UserInfo',
-        {
-            'create_time': float,
-            'udpate_time': float,
-            'user_id': int,
-            'user_name': str,
-            'role_names': list[str],
-            'perm_names': list[str],
-            'perm_apis': list[str],
-            'email': str | None,
-            'phone': str | None,
-            'avatar': int | None,
-            'password': NotRequired[str]
-        }
-    )
-Token = TypedDict(
-    'Token',
+    'UserInfo',
+    {
+        'create_time': float,
+        'udpate_time': float,
+        'user_id': int,
+        'user_name': str,
+        'role_names': list[str],
+        'perm_names': list[str],
+        'perm_apis': list[str],
+        'email': str | None,
+        'phone': str | None,
+        'avatar': int | None,
+        'password': NotRequired[str]
+    }
+)
+TokenInfo = TypedDict(
+    'TokenInfo',
     {
         'sub': int,
         'iat': int,
         'nbf': int,
         'exp': int,
         'user': UserInfo
+    }
+)
+Token = str
+ResponseToken = TypedDict(
+    'ResponseToken',
+    {
+        'access_token': Token,
+        'token_type': Literal['Bearer']
     }
 )
 
@@ -138,7 +146,7 @@ class DatabaseORMTableRolePerm(rorm.Table):
     perm_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key=True, comment='Permission ID.')
 
 
-def build_auth_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
+def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
     Check and build `auth` database tables.
 
@@ -231,7 +239,69 @@ def build_auth_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     engine.sync_engine.build.build(tables=tables, views_stats=views_stats, skip=True)
 
 
-auth_router = APIRouter()
+bearer = OAuth2PasswordBearer(
+    tokenUrl='/token',
+    scheme_name='RBACBearer',
+    description='Global authentication of based on RBAC model and Bearer framework.',
+    auto_error=False
+)
+
+
+async def depend_auth(
+    request: Request,
+    server: Bind.Server = Bind.server,
+    token: Token | None = Depends(bearer)
+) -> UserInfo:
+    """
+    Dependencie function of authentication.
+    If the verification fails, then response status code is 401 or 403.
+
+    Parameters
+    ----------
+    request : Request.
+    server : Server.
+    token : Authentication token.
+
+    Returns
+    -------
+    User information
+    """
+
+    # Check.
+    if not server.is_started_auth:
+        return
+    if bearer is None:
+        exit_api(401)
+
+    # Parameter.
+    key = server.api_auth_key
+    api_path = f'{request.method} {request.url.path}'
+
+    # Cache.
+    user: UserInfo | None = getattr(request.state, 'user', None)
+
+    # Decode.
+    if user is None:
+        json: TokenInfo | None = decode_jwt(token, key)
+        if json is None:
+            exit_api(401)
+        user = json['user']
+        request.state.user = user
+
+    # Authentication.
+    perm_apis = json['user']['perm_apis']
+    perm_apis = [
+        f'^{pattern}$'
+        for pattern in perm_apis
+    ]
+    result = search_batch(api_path, *perm_apis)
+    if result is None:
+        exit_api(403)
+
+    return user
+
+
+router_auth = APIRouter()
 
 
 async def get_user_info(
@@ -336,25 +406,20 @@ async def get_user_info(
     return info
 
 
-@auth_router.post('/sessions')
+@router_auth.post('/token')
 async def create_sessions(
-    account: str = Bind.i.body,
-    password: str = Bind.i.body,
-    account_type: Literal['name', 'email', 'phone'] = Bind.Body('name'),
+    username: str = Bind.i.form,
+    password: str = Bind.i.form,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
-) -> dict:
+) -> ResponseToken:
     """
     Create session.
 
     Parameters
     ----------
-    account : User account.
+    username : User name.
     password : User password.
-    account_type : User account type.
-        - `Literal['name']`: User name.
-        - `Literal['email']`: User Email.
-        - `Literal['phone']`: User phone mumber.
 
     Returns
     -------
@@ -366,7 +431,7 @@ async def create_sessions(
     sess_seconds = server.api_auth_sess_seconds
 
     # User information.
-    info = await get_user_info(conn, account, account_type)
+    info = await get_user_info(conn, username)
 
     # Check.
     if info is None:
@@ -375,10 +440,10 @@ async def create_sessions(
     if not is_hash_bcrypt(password, password_hash):
         exit_api(401)
 
-    # JWT.
+    # Response.
     now_timestamp_s = now('timestamp_s')
     user_id = info.pop('user_id')
-    data: Token = {
+    data: TokenInfo = {
         'sub': str(user_id),
         'iat': now_timestamp_s,
         'nbf': now_timestamp_s,
@@ -386,65 +451,9 @@ async def create_sessions(
         'user': info
     }
     token = encode_jwt(data, key)
-    response = {'token': token}
+    response = {
+        'access_token': token,
+        'token_type': 'Bearer'
+    }
 
     return response
-
-
-bearer = HTTPBearer(
-    scheme_name='RBACBearer',
-    description='Global authentication of based on RBAC model and Bearer framework.',
-    bearerFormat='JWT standard.',
-    auto_error=False
-)
-
-
-async def depend_auth(
-    request: Request,
-    server: Bind.Server = Bind.server,
-    auth: HTTPAuthorizationCredentials | None = Depends(bearer)
-) -> None:
-    """
-    Dependencie function of authentication.
-
-    Parameters
-    ----------
-    request : Request.
-    server : Server.
-    auth : Authentication.
-    """
-
-    # Check.
-    print(11111111111111111)
-    api_path = f'{request.method} {request.url.path}'
-    if (
-        not server.is_started_auth
-        or api_path == 'POST /sessions'
-    ):
-        return
-    if auth is None:
-        exit_api(401)
-
-    # Parameter.
-    key = server.api_auth_key
-    token = auth.credentials
-
-    # Decode.
-    json = decode_jwt(token, key)
-    if json is None:
-        exit_api(401)
-    json: Token
-    request.state.user = json['user']
-
-    # Check.
-    perm_apis = json['user']['perm_apis']
-    perm_apis = [
-        f'^{pattern}$'
-        for pattern in perm_apis
-    ]
-    try:
-        result = search_batch(api_path, *perm_apis)
-    except PatternError:
-        exit_api(403)
-    if result is None:
-        exit_api(403)
