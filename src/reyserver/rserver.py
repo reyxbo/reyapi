@@ -13,6 +13,7 @@ from typing import Literal
 from collections.abc import Sequence, Callable, Coroutine
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
+from logging import getLogger, Filter
 from uvicorn import run as uvicorn_run
 from starlette.middleware.base import _StreamingResponse
 from fastapi import FastAPI, Request
@@ -113,6 +114,9 @@ class Server(ServerBase, Singleton):
         'Authentication API session valid seconds.'
         self.api_file_dir: str
         'File API store directory path.'
+
+        # Filter warning.
+        self.__filter_warning()
 
 
     def __create_lifespan(
@@ -216,12 +220,27 @@ class Server(ServerBase, Singleton):
             return response
 
 
+    def __filter_warning(self) -> None:
+        """
+        Filter server default logger warning record.
+        """
+
+        # Filter.
+        log_filter = Filter()
+        log_filter.filter = lambda record: (
+            False
+            if record.msg == 'ASGI app factory detected. Using it, but please consider setting the --factory flag explicitly.'
+            else True
+        )
+        log = getLogger('uvicorn.error')
+        log.addFilter(log_filter)
+
+
     def run(
         self,
         host: str = '127.0.0.1',
-        port: int = 1024,
+        port: int = 8000,
         app: str | None = None,
-        factory: bool = False,
         workers: int = 1
     ) -> None:
         """
@@ -231,22 +250,31 @@ class Server(ServerBase, Singleton):
         ----------
         host : Server host.
         port: Server port.
-        app : Application path, format is `Module[.Sub....]:Variable[.Attributre....]` (e.g. `module.sub:server.app`).
+        app : Application or function path.
             - `None`: Cannot use parameter `workers`.
-        factory : Whether parameter `app` is factory function.
+            - `Application`: format is `module[.sub....]:var[.attr....]` (e.g. `module.sub:server.app`).
+            - `Function`: format is `module[.sub....]:func` (e.g. `module.sub:main`).
         workers: Number of server work processes.
 
         Examples
         --------
-        >>> server = Server(db)
-
         Single work process.
+        >>> server = Server(db)
         >>> server.run()
 
         Multiple work processes.
         >>> server = Server(db)
         >>> if __name__ == '__main__':
-        >>>     server('module.sub:server.app')
+        >>>     server('module.sub:server.app', workers=2)
+
+        Multiple work processes and define function.
+        >>> def main(run = False):
+        >>>     server = Server(db)
+        >>>     if run:
+        >>>         server('module.sub:main', workers=2, factory=True)
+        >>>     return server.app
+        >>> if __name__ == '__main__':
+        >>>     main(True)
         """
 
         # Parameter.
@@ -260,8 +288,7 @@ class Server(ServerBase, Singleton):
             port=port,
             workers=workers,
             ssl_certfile=self.ssl_cert,
-            ssl_keyfile=self.ssl_key,
-            factory=factory
+            ssl_keyfile=self.ssl_key
         )
 
 
