@@ -230,7 +230,7 @@ async def upload_file(
     """
 
     # Handle parameter.
-    file_store = FileStore(server.api_file_dir)
+    file_store = server.api_file_store
     file_bytes = await file.read()
     file_md5 = get_md5(file_bytes)
     file_size = len(file_bytes)

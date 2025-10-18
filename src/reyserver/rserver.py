@@ -23,6 +23,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from reydb import DatabaseAsync
 from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
+from reykit.ros import FileStore
 from reykit.rrand import randchar
 
 from .rbase import ServerBase, Bind
@@ -103,8 +104,8 @@ class Server(ServerBase, Singleton):
         'Authentication API JWT encryption key.'
         self.api_auth_sess_seconds: int
         'Authentication API session valid seconds.'
-        self.api_file_dir: str
-        'File API store directory path.'
+        self.api_file_store: FileStore
+        'File API store instance.'
 
         # Filter warning.
         self.__filter_warning()
@@ -400,7 +401,7 @@ class Server(ServerBase, Singleton):
         build_db_file(engine)
 
         # Add.
-        self.api_file_dir = file_dir
+        self.api_file_store = FileStore(file_dir)
         self.app.include_router(router_file, tags=['file'], dependencies=(Bind.token,))
 
 

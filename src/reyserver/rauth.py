@@ -78,7 +78,7 @@ class DatabaseORMTableUser(rorm.Table):
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
     user_id: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), key_auto=True, comment='User ID.')
-    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='User name.')
+    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='User name, use lowercase letters.')
     password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".')
     email: rorm.Email = rorm.Field(rorm.types.VARCHAR(255), index_u=True, comment='User email.')
     phone: str = rorm.Field(rorm.types.CHAR(11), index_u=True, comment='User phone.')
@@ -328,6 +328,7 @@ async def get_user_data(
     """
 
     # Parameters.
+    database = conn.engine.database
     if filter_invalid:
         sql_where = (
             '    WHERE (\n'
@@ -353,28 +354,28 @@ async def get_user_data(
         "    GROUP_CONCAT(DISTINCT `perm`.`api` SEPARATOR ';') AS `perm_apis`\n"
         'FROM (\n'
         '    SELECT `create_time`, `update_time`, `user_id`, `password`, `name`, `email`, `phone`, `avatar`\n'
-        '    FROM `test`.`user`\n'
+        f'    FROM `{database}`.`user`\n'
         f'{sql_where}'
         '    LIMIT 1\n'
         ') as `user`\n'
         'LEFT JOIN (\n'
         '    SELECT `user_id`, `role_id`\n'
-        '    FROM `test`.`user_role`\n'
+        '    FROM `{database}`.`user_role`\n'
         ') as `user_role`\n'
         'ON `user_role`.`user_id` = `user`.`user_id`\n'
         'LEFT JOIN (\n'
         '    SELECT `role_id`, `name`\n'
-        '    FROM `test`.`role`\n'
+        '    FROM `{database}`.`role`\n'
         ') AS `role`\n'
         'ON `user_role`.`role_id` = `role`.`role_id`\n'
         'LEFT JOIN (\n'
         '    SELECT `role_id`, `perm_id`\n'
-        '    FROM `test`.`role_perm`\n'
+        '    FROM `{database}`.`role_perm`\n'
         ') as `role_perm`\n'
         'ON `role_perm`.`role_id` = `role`.`role_id`\n'
         'LEFT JOIN (\n'
         "    SELECT `perm_id`, `name`, `api`\n"
-        '    FROM `test`.`perm`\n'
+        '    FROM `{database}`.`perm`\n'
         ') AS `perm`\n'
         'ON `role_perm`.`perm_id` = `perm`.`perm_id`\n'
         'GROUP BY `user_id`'
