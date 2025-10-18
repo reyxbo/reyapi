@@ -41,6 +41,17 @@ class Server(ServerBase, Singleton):
     Can view document api '/docs', '/redoc', '/openapi.json'.
     """
 
+    is_started_auth: bool = False
+    'Whether start authentication.'
+    api_public_dir: str
+    'Public directory.'
+    api_auth_key: str
+    'Authentication API JWT encryption key.'
+    api_auth_sess_seconds: int
+    'Authentication API session valid seconds.'
+    api_file_store: FileStore
+    'File API store instance.'
+
 
     def __init__(
         self,
@@ -94,18 +105,6 @@ class Server(ServerBase, Singleton):
         if to_https:
             self.app.add_middleware(HTTPSRedirectMiddleware)
         self.__add_base_middleware()
-
-        # API.
-        self.is_started_auth: bool = False
-        'Whether start authentication.'
-        self.api_public_dir: str
-        'Public directory.'
-        self.api_auth_key: str
-        'Authentication API JWT encryption key.'
-        self.api_auth_sess_seconds: int
-        'Authentication API session valid seconds.'
-        self.api_file_store: FileStore
-        'File API store instance.'
 
 
     def __create_lifespan(

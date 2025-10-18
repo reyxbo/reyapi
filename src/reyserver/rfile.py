@@ -12,7 +12,7 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
-from reykit.ros import FileStore, get_md5
+from reykit.ros import get_md5
 
 from .rbase import Bind, exit_api
 
@@ -213,7 +213,7 @@ async def upload_file(
     name: str = Bind.i.forms_n,
     note: str = Bind.i.forms_n,
     sess: Bind.Sess = Bind.sess.file,
-    server: Bind.Server = Bind.server
+    server: Bind.Server = Bind.server # type: ignore
 ) -> DatabaseORMTableInfo:
     """
     Upload file.
