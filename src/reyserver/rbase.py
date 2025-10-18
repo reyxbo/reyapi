@@ -11,8 +11,8 @@
 
 from typing import Literal, Type, NoReturn, overload
 from http import HTTPStatus
-from fastapi import APIRouter
-from fastapi import HTTPException, Request, UploadFile as File
+from fastapi import FastAPI, APIRouter, Request, UploadFile as File, HTTPException
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.params import (
     Depends,
     Path,
@@ -26,6 +26,7 @@ from fastapi.params import (
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMSessionAsync
 from reykit.rbase import Base, Exit, StaticMeta, Singleton, throw
+from reykit.ros import File, Folder
 
 from . import rserver
 
@@ -40,7 +41,9 @@ __all__ = (
     'ServerBindInstanceDatabaseSession',
     'ServerBindInstance',
     'ServerBind',
-    'Bind'
+    'Bind',
+    'router_test',
+    'router_public'
 )
 
 
@@ -311,6 +314,26 @@ class ServerBindInstance(ServerBase, Singleton):
         return forms
 
 
+async def depend_server(request: Request) -> 'rserver.Server':
+    """
+    Dependencie function of now Server instance.
+
+    Parameters
+    ----------
+    request : Request.
+
+    Returns
+    -------
+    Server.
+    """
+
+    # Get.
+    app: FastAPI = request.app
+    server: rserver.Server = app.extra['server']
+
+    return server
+
+
 class ServerBind(ServerBase, metaclass=StaticMeta):
     """
     Server API bind parameter type.
@@ -340,7 +363,7 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     Sess = DatabaseORMSessionAsync
     Server = Type['rserver.Server']
     'Server type.'
-    server: Depend
+    server: Depend = Depend(depend_server)
     'Server instance dependency type.'
     i = ServerBindInstance()
     'Server API bind parameter build instance.'
@@ -353,11 +376,11 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
 
 
 Bind = ServerBind
+router_test = APIRouter()
+router_public = APIRouter()
 
-router_base = APIRouter()
 
-
-@router_base.get('/test')
+@router_test.get('/test')
 def test() -> Literal['test']:
     """
     Test.
@@ -373,8 +396,8 @@ def test() -> Literal['test']:
     return response
 
 
-@router_base.post('/test/echo')
-def echo(data: dict = Bind.i.body) -> dict:
+@router_test.post('/test/echo')
+def test_echo(data: dict = Bind.i.body) -> dict:
     """
     Echo test.
 
@@ -390,3 +413,41 @@ def echo(data: dict = Bind.i.body) -> dict:
     # Resposne.
 
     return data
+
+
+@router_public.get('/')
+def home(server: Bind.Server = Bind.server) -> HTMLResponse:
+    """
+    Home page.
+
+    Parameters
+    ----------
+    Home page HTML content.
+    """
+
+    # Parameter.
+    public_dir = server.api_public_dir
+    file_path = Folder(public_dir) + 'index.html'
+    file = File(file_path)
+
+    # Response.
+    response = HTMLResponse(file.str)
+
+    return response
+
+
+@router_public.get('/public/{relpath}')
+def get_public_file(relpath: str = Bind.i.path) -> FileResponse:
+    """
+    Get public file.
+
+    Parameters
+    ----------
+    relpath : Relative path of based on public directory.
+
+    Returns
+    -------
+    File.
+    """
+
+    ...

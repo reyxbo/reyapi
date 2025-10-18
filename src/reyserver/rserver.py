@@ -19,6 +19,7 @@ from starlette.middleware.base import _StreamingResponse
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from reydb import DatabaseAsync
 from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
@@ -42,14 +43,12 @@ class Server(ServerBase, Singleton):
 
     def __init__(
         self,
-        db: DatabaseAsync,
-        public: str | None = None,
+        db: DatabaseAsync | None = None,
+        db_warm: bool = False,
         depend: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
         before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
         after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
-        ssl_cert: str | None = None,
-        ssl_key: str | None = None,
-        db_warm: bool = False,
+        to_https: bool = False,
         debug: bool = False
     ) -> None:
         """
@@ -58,19 +57,15 @@ class Server(ServerBase, Singleton):
         Parameters
         ----------
         db : Asynchronous database, must include database engines with APIs.
-        public : Public directory.
+        db_warm : Whether database pre create connection to warm all pool.
         depend : Global api dependencies.
         before : Execute before server start.
         after : Execute after server end.
-        ssl_cert : SSL certificate file path.
-        ssl_key : SSL key file path.
-        db_warm : Whether database pre create connection to warm all pool.
+        to_https : Whehter redirect http to https.
         debug : Whether use development mode debug server.
         """
 
         # Parameter.
-        if type(ssl_cert) != type(ssl_key):
-            throw(AssertionError, ssl_cert, ssl_key)
         if depend is None:
             depend = ()
         elif iscoroutinefunction(depend):
@@ -83,8 +78,6 @@ class Server(ServerBase, Singleton):
 
         # Build.
         self.db = db
-        self.ssl_cert = ssl_cert
-        self.ssl_key = ssl_key
         self.app = FastAPI(
             dependencies=depend,
             lifespan=lifespan,
@@ -92,22 +85,20 @@ class Server(ServerBase, Singleton):
             server=self
         )
 
-        # Public file.
-        if public is not None:
-            subapp = StaticFiles(directory=public, html=True)
-            self.app.mount('/', subapp)
-
         # Middleware
         self.wrap_middleware = self.app.middleware('http')
         'Decorator, add middleware to APP.'
         self.app.add_middleware(GZipMiddleware)
-        if not debug:
+        self.app.add_middleware(TrustedHostMiddleware)
+        if to_https:
             self.app.add_middleware(HTTPSRedirectMiddleware)
         self.__add_base_middleware()
 
         # API.
         self.is_started_auth: bool = False
         'Whether start authentication.'
+        self.api_public_dir: str
+        'Public directory.'
         self.api_auth_key: str
         'Authentication API JWT encryption key.'
         self.api_auth_sess_seconds: int
@@ -241,7 +232,9 @@ class Server(ServerBase, Singleton):
         host: str = '127.0.0.1',
         port: int = 8000,
         app: str | None = None,
-        workers: int = 1
+        workers: int = 1,
+        ssl_cert: str | None = None,
+        ssl_key: str | None = None
     ) -> None:
         """
         Run server.
@@ -255,6 +248,8 @@ class Server(ServerBase, Singleton):
             - `Application`: format is `module[.sub....]:var[.attr....]` (e.g. `module.sub:server.app`).
             - `Function`: format is `module[.sub....]:func` (e.g. `module.sub:main`).
         workers: Number of server work processes.
+        ssl_cert : SSL certificate file path.
+        ssl_key : SSL key file path.
 
         Examples
         --------
@@ -269,6 +264,8 @@ class Server(ServerBase, Singleton):
         """
 
         # Parameter.
+        if type(ssl_cert) != type(ssl_key):
+            throw(AssertionError, ssl_cert, ssl_key)
         if app is None:
             app = self.app
         if workers == 1:
@@ -280,8 +277,8 @@ class Server(ServerBase, Singleton):
             host=host,
             port=port,
             workers=workers,
-            ssl_certfile=self.ssl_cert,
-            ssl_keyfile=self.ssl_key
+            ssl_certfile=ssl_cert,
+            ssl_keyfile=ssl_key
         )
 
 
@@ -323,15 +320,34 @@ class Server(ServerBase, Singleton):
                 setattr(self.app, key, value)
 
 
-    def add_api_base(self) -> None:
+    def add_api_test(self) -> None:
         """
-        Add base API.
+        Add test API.
         """
 
-        from .rbase import router_base
+        from .rbase import router_test
 
         # Add.
-        self.app.include_router(router_base, tags=['test'])
+        self.app.include_router(router_test, tags=['test'])
+
+
+    def add_api_public(self, path: str) -> None:
+        """
+        Add public API,
+        mapping `{path}/index.html` to 'GET /',
+        mapping `{path}/{sub_path}` to `GET /public/{sub_path}`.
+
+        Parameters
+        path : Public directory.
+        """
+
+        from .rbase import router_public
+
+        # Add.
+        self.api_public_dir = path
+        self.app.include_router(router_public, tags=['public'])
+        subapp = StaticFiles(directory=path)
+        self.app.mount('/public', subapp)
 
 
     def add_api_auth(self, key: str | None = None, sess_seconds: int = 28800) -> None:
@@ -388,25 +404,4 @@ class Server(ServerBase, Singleton):
         self.app.include_router(router_file, tags=['file'], dependencies=(Bind.token,))
 
 
-async def depend_server(request: Request) -> Server:
-    """
-    Dependencie function of now Server instance.
-
-    Parameters
-    ----------
-    request : Request.
-
-    Returns
-    -------
-    Server.
-    """
-
-    # Get.
-    app: FastAPI = request.app
-    server = app.extra['server']
-
-    return server
-
-
 Bind.Server = Server
-Bind.server = Bind.Depend(depend_server)
