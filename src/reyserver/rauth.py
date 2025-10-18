@@ -407,7 +407,7 @@ async def get_user_data(
 
 
 @router_auth.post('/token')
-async def create_sessions(
+async def create_token(
     username: str = Bind.i.form,
     password: str = Bind.i.form,
     conn: Bind.Conn = Bind.conn.auth,

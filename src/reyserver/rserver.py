@@ -266,20 +266,13 @@ class Server(ServerBase, Singleton):
         >>> server = Server(db)
         >>> if __name__ == '__main__':
         >>>     server('module.sub:server.app', workers=2)
-
-        Multiple work processes and define function.
-        >>> def main(run = False):
-        >>>     server = Server(db)
-        >>>     if run:
-        >>>         server('module.sub:main', workers=2, factory=True)
-        >>>     return server.app
-        >>> if __name__ == '__main__':
-        >>>     main(True)
         """
 
         # Parameter.
         if app is None:
             app = self.app
+        if workers == 1:
+            workers = None
 
         # Run.
         uvicorn_run(
