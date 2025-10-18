@@ -11,7 +11,7 @@
 
 from typing import Literal, Type, NoReturn, overload
 from http import HTTPStatus
-from fastapi import FastAPI, APIRouter, Request, UploadFile as File, HTTPException
+from fastapi import FastAPI, APIRouter, Request, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.params import (
     Depends,
@@ -355,8 +355,8 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Request body form parameter dependency type.'
     Forms = Forms
     'Request body multiple forms parameter dependency type.'
-    File = File
-    'Verify file type.'
+    File = UploadFile
+    'Type hints file type.'
     Depend = Depends
     'Dependency type.'
     Conn = DatabaseConnectionAsync
