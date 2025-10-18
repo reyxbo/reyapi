@@ -107,9 +107,6 @@ class Server(ServerBase, Singleton):
         self.api_file_store: FileStore
         'File API store instance.'
 
-        # Filter warning.
-        self.__filter_warning()
-
 
     def __create_lifespan(
         self,
@@ -212,22 +209,6 @@ class Server(ServerBase, Singleton):
             return response
 
 
-    def __filter_warning(self) -> None:
-        """
-        Filter server default logger warning record.
-        """
-
-        # Filter.
-        log_filter = Filter()
-        log_filter.filter = lambda record: (
-            False
-            if record.msg == 'ASGI app factory detected. Using it, but please consider setting the --factory flag explicitly.'
-            else True
-        )
-        log = getLogger('uvicorn.error')
-        log.addFilter(log_filter)
-
-
     def run(
         self,
         host: str = '127.0.0.1',
@@ -261,7 +242,7 @@ class Server(ServerBase, Singleton):
         Multiple work processes.
         >>> server = Server(db)
         >>> if __name__ == '__main__':
-        >>>     server('module.sub:server.app', workers=2)
+        >>>     server.run('module.sub:server.app', workers=2)
         """
 
         # Parameter.
