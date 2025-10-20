@@ -210,9 +210,9 @@ class Server(ServerBase, Singleton):
 
     def run(
         self,
+        app: str | None = None,
         host: str = '127.0.0.1',
         port: int = 8000,
-        app: str | None = None,
         workers: int = 1,
         ssl_cert: str | None = None,
         ssl_key: str | None = None
@@ -222,12 +222,12 @@ class Server(ServerBase, Singleton):
 
         Parameters
         ----------
-        host : Server host.
-        port: Server port.
         app : Application or function path.
             - `None`: Cannot use parameter `workers`.
             - `Application`: format is `module[.sub....]:var[.attr....]` (e.g. `module.sub:server.app`).
             - `Function`: format is `module[.sub....]:func` (e.g. `module.sub:main`).
+        host : Server host.
+        port: Server port.
         workers: Number of server work processes.
         ssl_cert : SSL certificate file path.
         ssl_key : SSL key file path.
