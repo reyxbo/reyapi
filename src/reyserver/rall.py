@@ -11,6 +11,7 @@
 
 from .rauth import *
 from .rbase import *
+from .rbind import *
 from .rclient import *
 from .rfile import *
 from .rpublic import *

@@ -9,7 +9,7 @@
 """
 
 
-from typing import Type, overload
+from typing import overload, TYPE_CHECKING
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.params import (
     Depends,
@@ -313,8 +313,9 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Dependency type.'
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
-    Server = rserver.Server
-    'Server type.'
+    if TYPE_CHECKING:
+        Server = rserver.Server
+        'Server type.'
     server: Depend = Depend(depend_server)
     'Server instance dependency type.'
     i = ServerBindInstance()

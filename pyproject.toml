@@ -1,6 +1,6 @@
 [project]
 name = "reyserver"
-version = "1.1.78"
+version = "1.1.79"
 description = "Backend server method set."
 readme = "README.md"
 requires-python = ">=3.12"

@@ -12,7 +12,7 @@
 from typing import Literal
 from fastapi import APIRouter
 
-from .rbase import Bind
+from .rbind import Bind
 
 
 __all__ = (

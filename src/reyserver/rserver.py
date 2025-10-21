@@ -334,9 +334,9 @@ class Server(ServerBase, Singleton):
         self.app.include_router(router_public, tags=['public'])
 
 
-    def add_api_redirect(self, server_url: str) -> None:
+    def add_api_redirect_all(self, server_url: str) -> None:
         """
-        Add redirect API.
+        Add redirect all API.
         Redirect all requests to the target server.
 
         Parameters
