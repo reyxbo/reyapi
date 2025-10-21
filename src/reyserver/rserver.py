@@ -327,9 +327,9 @@ class Server(ServerBase, Singleton):
 
         # Add.
         self.api_public_dir = public_dir
-        self.app.include_router(router_public, tags=['public'])
         subapp = StaticFiles(directory=public_dir)
         self.app.mount('/public', subapp)
+        self.app.include_router(router_public, tags=['public'])
 
 
     def add_api_auth(self, key: str | None = None, sess_seconds: int = 28800) -> None:
