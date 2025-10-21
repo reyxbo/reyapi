@@ -54,6 +54,7 @@ class ServerClient(ServerBase):
         self.password = password
         self.url = url
         self.token = self.get_token(username, password)
+        self.request = copy_type_hints(self._request, request)
 
 
     def get_token(
@@ -125,7 +126,7 @@ class ServerClient(ServerBase):
         return response
 
 
-    request = copy_type_hints(_request, request)
+    # request = copy_type_hints(_request, request)
 
 
     def upload_file(

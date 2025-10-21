@@ -46,9 +46,9 @@ def home(server: Bind.Server = Bind.server) -> HTMLResponse:
 
 
 @router_public.get('/public/{path:path}')
-def get_public_file(path: str = Bind.i.path) -> FileResponse:
+def download_public_file(path: str = Bind.i.path) -> FileResponse:
     """
-    Get public file.
+    Download public file.
 
     Parameters
     ----------
