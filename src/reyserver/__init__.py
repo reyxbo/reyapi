@@ -14,7 +14,9 @@ rauth : Authentication methods.
 rbase : Base methods.
 rclient : Client methods.
 rfile : File methods.
+rpublic : Public methods.
 rserver : Server methods.
+rtest : Test methods.
 """
 
 

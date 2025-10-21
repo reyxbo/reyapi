@@ -306,28 +306,29 @@ class Server(ServerBase, Singleton):
         Add test API.
         """
 
-        from .rbase import router_test
+        from .rtest import router_test
 
         # Add.
         self.app.include_router(router_test, tags=['test'])
 
 
-    def add_api_public(self, path: str) -> None:
+    def add_api_public(self, public_dir: str) -> None:
         """
         Add public API,
-        mapping `{path}/index.html` to 'GET /',
-        mapping `{path}/{sub_path}` to `GET /public/{sub_path}`.
+        mapping `{public_dir}/index.html` to `GET /`,
+        mapping `{public_dir}/{path}` to `GET `/public/{path:path}`.
 
         Parameters
-        path : Public directory.
+        ----------
+        public_dir : Public directory.
         """
 
-        from .rbase import router_public
+        from .rpublic import router_public
 
         # Add.
-        self.api_public_dir = path
+        self.api_public_dir = public_dir
         self.app.include_router(router_public, tags=['public'])
-        subapp = StaticFiles(directory=path)
+        subapp = StaticFiles(directory=public_dir)
         self.app.mount('/public', subapp)
 
 

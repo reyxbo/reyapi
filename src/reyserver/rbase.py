@@ -9,10 +9,9 @@
 """
 
 
-from typing import Literal, Type, NoReturn, overload
+from typing import Type, NoReturn, overload
 from http import HTTPStatus
-from fastapi import FastAPI, APIRouter, Request, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, Request, UploadFile, HTTPException
 from fastapi.params import (
     Depends,
     Path,
@@ -26,7 +25,6 @@ from fastapi.params import (
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMSessionAsync
 from reykit.rbase import Base, Exit, StaticMeta, Singleton, throw
-from reykit.ros import File, Folder
 
 from . import rserver
 
@@ -376,78 +374,3 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
 
 
 Bind = ServerBind
-router_test = APIRouter()
-router_public = APIRouter()
-
-
-@router_test.get('/test')
-def test() -> Literal['test']:
-    """
-    Test.
-
-    Returns
-    -------
-    Text `test`.
-    """
-
-    # Resposne.
-    response = 'test'
-
-    return response
-
-
-@router_test.post('/test/echo')
-def test_echo(data: dict = Bind.i.body) -> dict:
-    """
-    Echo test.
-
-    Paremeters
-    ----------
-    data : Echo data.
-
-    Returns
-    -------
-    Echo data.
-    """
-
-    # Resposne.
-
-    return data
-
-
-@router_public.get('/')
-def home(server: Bind.Server = Bind.server) -> HTMLResponse:
-    """
-    Home page.
-
-    Parameters
-    ----------
-    Home page HTML content.
-    """
-
-    # Parameter.
-    public_dir = server.api_public_dir
-    file_path = Folder(public_dir) + 'index.html'
-    file = File(file_path)
-
-    # Response.
-    response = HTMLResponse(file.str)
-
-    return response
-
-
-@router_public.get('/public/{relpath}')
-def get_public_file(relpath: str = Bind.i.path) -> FileResponse:
-    """
-    Get public file.
-
-    Parameters
-    ----------
-    relpath : Relative path of based on public directory.
-
-    Returns
-    -------
-    File.
-    """
-
-    ...
