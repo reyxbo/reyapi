@@ -13,7 +13,7 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, FileResponse
 from reykit.ros import File, Folder
 
-from .rbase import Bind
+from .rbind import Bind
 
 
 __all__ = (

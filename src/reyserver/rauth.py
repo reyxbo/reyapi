@@ -18,7 +18,8 @@ from reykit.rdata import encode_jwt, decode_jwt, is_hash_bcrypt
 from reykit.rre import search_batch
 from reykit.rtime import now
 
-from .rbase import Bind, exit_api
+from .rbase import exit_api
+from .rbind import Bind
 
 
 __all__ = (

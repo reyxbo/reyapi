@@ -13,6 +13,7 @@ from .rauth import *
 from .rbase import *
 from .rclient import *
 from .rfile import *
-from rpublic import *
+from .rpublic import *
+from .rredirect import *
 from .rserver import *
 from .rtest import *

@@ -13,7 +13,6 @@ from typing import Literal
 from collections.abc import Sequence, Callable, Coroutine
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
-from logging import getLogger, Filter
 from uvicorn import run as uvicorn_run
 from starlette.middleware.base import _StreamingResponse
 from fastapi import FastAPI, Request
@@ -26,7 +25,8 @@ from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
 from reykit.ros import FileStore
 from reykit.rrand import randchar
 
-from .rbase import ServerBase, Bind
+from .rbase import ServerBase
+from .rbind import Bind
 
 
 __all__ = (
@@ -45,6 +45,8 @@ class Server(ServerBase, Singleton):
     'Whether start authentication.'
     api_public_dir: str
     'Public directory.'
+    api_redirect_server_url: str
+    'Target server URL of redirect all requests.'
     api_auth_key: str
     'Authentication API JWT encryption key.'
     api_auth_sess_seconds: int
@@ -330,6 +332,23 @@ class Server(ServerBase, Singleton):
         subapp = StaticFiles(directory=public_dir)
         self.app.mount('/public', subapp)
         self.app.include_router(router_public, tags=['public'])
+
+
+    def add_api_redirect(self, server_url: str) -> None:
+        """
+        Add redirect API.
+        Redirect all requests to the target server.
+
+        Parameters
+        ----------
+        server_url : Target server URL.
+        """
+
+        from .rredirect import router_redirect
+
+        # Add.
+        self.api_redirect_server_url = server_url
+        self.app.include_router(router_redirect, tags=['redirect'])
 
 
     def add_api_auth(self, key: str | None = None, sess_seconds: int = 28800) -> None:

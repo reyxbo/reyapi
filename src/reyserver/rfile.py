@@ -14,7 +14,8 @@ from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.ros import get_md5
 
-from .rbase import Bind, exit_api
+from .rbase import exit_api
+from .rbind import Bind
 
 
 __all__ = (

@@ -15,6 +15,7 @@ rbase : Base methods.
 rclient : Client methods.
 rfile : File methods.
 rpublic : Public methods.
+rredirect : Redirect methods.
 rserver : Server methods.
 rtest : Test methods.
 """
