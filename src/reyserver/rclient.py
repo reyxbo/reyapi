@@ -118,7 +118,7 @@ class ServerClient(ServerBase):
             return response
 
         # Try request.
-        self.token = self.create_session(self.username, self.password)
+        self.token = self.get_token(self.username, self.password)
         headers['Authorization'] = f'Bearer {self.token}'
         kwargs['check'] = True
         response = request(*args, **kwargs)
