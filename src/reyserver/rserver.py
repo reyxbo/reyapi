@@ -20,6 +20,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi_cache import FastAPICache
+from redis.asyncio import Redis
 from reydb import DatabaseAsync
 from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
 from reykit.ros import FileStore
@@ -27,6 +29,7 @@ from reykit.rrand import randchar
 
 from .rbase import ServerBase
 from .rbind import Bind
+from .rcache import init_cache
 
 
 __all__ = (
@@ -59,6 +62,8 @@ class Server(ServerBase, Singleton):
         self,
         db: DatabaseAsync | None = None,
         db_warm: bool = False,
+        redis: Redis | None = None,
+        redis_expire: int | None = None,
         depend: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
         before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
         after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None = None,
@@ -70,8 +75,10 @@ class Server(ServerBase, Singleton):
 
         Parameters
         ----------
-        db : Asynchronous database, must include database engines with APIs.
+        db : Asynchronous database, include database engines required for APIs.
         db_warm : Whether database pre create connection to warm all pool.
+        redis : Asynchronous Redis, activate cache function.
+        redis_expire : Redis cache expire seconds.
         depend : Global api dependencies.
         before : Execute before server start.
         after : Execute after server end.
@@ -88,10 +95,16 @@ class Server(ServerBase, Singleton):
             Bind.Depend(task)
             for task in depend
         ]
-        lifespan = self.__create_lifespan(before, after, db_warm)
+        lifespan = self.__create_lifespan(
+            before,
+            after,
+            db_warm,
+            redis_expire
+        )
 
         # Build.
         self.db = db
+        self.redis = redis
         self.app = FastAPI(
             dependencies=depend,
             lifespan=lifespan,
@@ -113,7 +126,8 @@ class Server(ServerBase, Singleton):
         self,
         before: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None,
         after: CoroutineFunctionSimple | Sequence[CoroutineFunctionSimple] | None,
-        db_warm: bool
+        db_warm: bool,
+        redis_expire: int | None
     ) -> _AsyncGeneratorContextManager[None, None]:
         """
         Create asynchronous function of lifespan manager.
@@ -123,6 +137,7 @@ class Server(ServerBase, Singleton):
         before : Execute before server start.
         after : Execute after server end.
         db_warm : Whether database pre create connection to warm all pool.
+        redis_expire : Redis cache expire seconds.
 
         Returns
         -------
@@ -158,6 +173,12 @@ class Server(ServerBase, Singleton):
             if db_warm:
                 await self.db.warm_all()
 
+            ## Redis.
+            if self.redis is not None:
+                init_cache(self.redis, redis_expire)
+            else:
+                FastAPICache._enable = False
+
             # Runing.
             yield
 
@@ -166,7 +187,8 @@ class Server(ServerBase, Singleton):
                 await after()
 
             ## Database.
-            await self.db.dispose_all()
+            if self.db is not None:
+                await self.db.dispose_all()
 
 
         return lifespan
@@ -370,8 +392,11 @@ class Server(ServerBase, Singleton):
             key = randchar(32)
 
         # Database.
-        if 'auth' not in self.db:
-            throw(AssertionError, self.db)
+        if (
+            self.db is None
+            or 'auth' not in self.db
+        ):
+            throw(TypeError, self.db)
         engine = self.db.auth
         build_db_auth(engine)
 
@@ -395,8 +420,11 @@ class Server(ServerBase, Singleton):
         from .rfile import build_db_file, router_file
 
         # Database.
-        if 'file' not in self.db:
-            throw(AssertionError, self.db)
+        if (
+            self.db is None
+            or 'file' not in self.db
+        ):
+            throw(TypeError, self.db)
         engine = self.db.file
         build_db_file(engine)
 

@@ -23,10 +23,10 @@ from fastapi.params import (
 )
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMSessionAsync
-from reykit.rbase import StaticMeta, Singleton
+from reykit.rbase import StaticMeta, Singleton, throw
 
 from . import rserver
-from .rbase import ServerBase
+from .rbase import ServerBase, depend_pass
 
 
 __all__ = (
@@ -66,6 +66,10 @@ class ServerBindInstanceDatabaseSuper(ServerBase):
             """
             Dependencie function of asynchronous database.
             """
+
+            # Check.
+            if server.db is None:
+                throw(TypeError, server.db)
 
             # Parameter.
             engine = server.db[name]
@@ -324,7 +328,7 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Server API bind parameter asynchronous database connection.'
     sess = ServerBindInstanceDatabaseSession()
     'Server API bind parameter asynchronous database session.'
-    token: Depend
+    token: Depend = depend_pass
     'Server authentication token dependency type.'
 
 

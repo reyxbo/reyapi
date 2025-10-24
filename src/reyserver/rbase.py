@@ -12,6 +12,7 @@
 from typing import NoReturn
 from http import HTTPStatus
 from fastapi import HTTPException
+from fastapi.params import Depends
 from reykit.rbase import Base, Exit, throw
 
 
@@ -19,7 +20,8 @@ __all__ = (
     'ServerBase',
     'ServerExit',
     'ServerExitAPI',
-    'exit_api'
+    'exit_api',
+    'depend_pass'
 )
 
 
@@ -61,3 +63,12 @@ def exit_api(code: int = 400, text: str | None = None) -> NoReturn:
 
     # Throw exception.
     raise ServerExitAPI(code, text)
+
+
+async def depend_pass_func() -> None:
+    """
+    Depend pass.
+    """
+
+
+depend_pass = Depends(depend_pass_func)

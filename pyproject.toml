@@ -1,6 +1,6 @@
 [project]
 name = "reyserver"
-version = "1.1.80"
+version = "1.1.81"
 description = "Backend server method set."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -11,6 +11,7 @@ authors = [
 ]
 dependencies = [
     "fastapi[standard]",
+    "fastapi-cache2[redis]",
     "reydb",
     "reykit",
     "sqladmin[full]",

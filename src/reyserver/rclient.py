@@ -126,9 +126,6 @@ class ServerClient(ServerBase):
         return response
 
 
-    # request = copy_type_hints(_request, request)
-
-
     def upload_file(
         self,
         source: str | bytes,

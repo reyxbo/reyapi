@@ -12,6 +12,8 @@ Modules
 rall : All methods.
 rauth : Authentication methods.
 rbase : Base methods.
+rbind : Dependency bind methods.
+rcache : Cache methods.
 rclient : Client methods.
 rfile : File methods.
 rpublic : Public methods.

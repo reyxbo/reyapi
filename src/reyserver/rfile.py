@@ -16,6 +16,7 @@ from reykit.ros import get_md5
 
 from .rbase import exit_api
 from .rbind import Bind
+from .rcache import wrap_cache
 
 
 __all__ = (
@@ -182,6 +183,7 @@ router_file = APIRouter()
 
 
 @router_file.get('/files/{file_id}')
+@wrap_cache
 async def get_file_info(
     file_id: int = Bind.i.path,
     sess: Bind.Sess = Bind.sess.file
