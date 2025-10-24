@@ -63,7 +63,7 @@ def init_cache(redis: Redis, redis_expire: int | None = None) -> None:
 
         # Parameter.
         data = f'{func.__module__}:{func.__name__}:{args}:{kwargs}'
-        pattern = r' object at 0x[0-9A-F]{8,16}+>'
+        pattern = r' object at 0x[0-9a-fA-F]+>'
         data = sub(pattern, data, '>')
 
         # Build.
