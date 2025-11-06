@@ -71,83 +71,85 @@ JSONToken = TypedDict(
 
 class DatabaseORMTableUser(rorm.Table):
     """
-    Database `user` table ORM model.
+    Database "user" table ORM model.
     """
 
     __name__ = 'user'
     __comment__ = 'User information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
-    user_id: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), key_auto=True, comment='User ID.')
+    user_id: int = rorm.Field(rorm.types.INTEGER, key_auto=True, comment='User ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='User name, use lowercase letters.')
     password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".')
     email: rorm.Email = rorm.Field(rorm.types.VARCHAR(255), index_u=True, comment='User email.')
     phone: str = rorm.Field(rorm.types.CHAR(11), index_u=True, comment='User phone.')
-    avatar: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), comment='User avatar file ID.')
-    is_valid: bool = rorm.Field(rorm.types_mysql.TINYINT(unsigned=True), field_default='1', not_null=True, comment='Is the valid.')
+    avatar: int = rorm.Field(rorm.types.INTEGER, comment='User avatar file ID.')
+    is_valid: bool = rorm.Field(rorm.types.BOOLEAN, field_default='TRUE', not_null=True, comment='Is the valid.')
 
 
 class DatabaseORMTableRole(rorm.Table):
     """
-    Database `role` table ORM model.
+    Database "role" table ORM model.
     """
 
     __name__ = 'role'
     __comment__ = 'Role information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
-    role_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key_auto=True, comment='Role ID.')
+    role_id: int = rorm.Field(rorm.types.SMALLINT, key_auto=True, comment='Role ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='Role name.')
     desc: str = rorm.Field(rorm.types.VARCHAR(500), comment='Role description.')
+    is_valid: bool = rorm.Field(rorm.types.BOOLEAN, field_default='TRUE', not_null=True, comment='Is the valid.')
 
 
 class DatabaseORMTablePerm(rorm.Table):
     """
-    Database `perm` table ORM model.
+    Database "perm" table ORM model.
     """
 
     __name__ = 'perm'
     __comment__ = 'API permission information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
-    perm_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key_auto=True, comment='Permission ID.')
+    perm_id: int = rorm.Field(rorm.types.SMALLINT, key_auto=True, comment='Permission ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='Permission name.')
     desc: str = rorm.Field(rorm.types.VARCHAR(500), comment='Permission description.')
     api: str = rorm.Field(
         rorm.types.VARCHAR(1000),
         comment=r'API method and resource path regular expression "match" pattern, case insensitive, format is "{method} {path}" (e.g. "GET /users").'
     )
+    is_valid: bool = rorm.Field(rorm.types.BOOLEAN, field_default='TRUE', not_null=True, comment='Is the valid.')
 
 
 class DatabaseORMTableUserRole(rorm.Table):
     """
-    Database `user_role` table ORM model.
+    Database "user_role" table ORM model.
     """
 
     __name__ = 'user_role'
     __comment__ = 'User and role association table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
-    user_id: int = rorm.Field(rorm.types_mysql.MEDIUMINT(unsigned=True), key=True, comment='User ID.')
-    role_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key=True, comment='Role ID.')
+    user_id: int = rorm.Field(rorm.types.INTEGER, key=True, comment='User ID.')
+    role_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Role ID.')
 
 
 class DatabaseORMTableRolePerm(rorm.Table):
     """
-    Database `role_perm` table ORM model.
+    Database "role_perm" table ORM model.
     """
 
     __name__ = 'role_perm'
     __comment__ = 'role and permission association table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
-    role_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key=True, comment='Role ID.')
-    perm_id: int = rorm.Field(rorm.types_mysql.SMALLINT(unsigned=True), key=True, comment='Permission ID.')
+    role_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Role ID.')
+    perm_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Permission ID.')
 
 
 def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
-    Check and build `auth` database tables.
+    Check and build "auth" database tables.
 
     Parameters
     ----------
@@ -155,7 +157,6 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
 
     # Set parameter.
-    database = engine.database
 
     ## Table.
     tables = [
@@ -169,13 +170,13 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     ## View stats.
     views_stats = [
         {
-            'path': 'stats',
+            'table': 'stats',
             'items': [
                 {
                     'name': 'user_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`user`'
+                        f'FROM "user"'
                     ),
                     'comment': 'User information count.'
                 },
@@ -183,7 +184,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'role_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`role`'
+                        f'FROM "role"'
                     ),
                     'comment': 'Role information count.'
                 },
@@ -191,7 +192,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'perm_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`perm`'
+                        f'FROM "perm"'
                     ),
                     'comment': 'Permission information count.'
                 },
@@ -199,8 +200,8 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'user_day_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`user`\n'
-                        'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) = 0'
+                        f'FROM "user"\n'
+                        'WHERE DATE_PART(\'day\', NOW() - "create_time") = 0'
                     ),
                     'comment': 'User information count in the past day.'
                 },
@@ -208,8 +209,8 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'user_week_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`user`\n'
-                        'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) <= 6'
+                        f'FROM "user"\n'
+                        'WHERE DATE_PART(\'day\', NOW() - "create_time") <= 6'
                     ),
                     'comment': 'User information count in the past week.'
                 },
@@ -217,16 +218,16 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'user_month_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM `{database}`.`user`\n'
-                        'WHERE TIMESTAMPDIFF(DAY, `create_time`, NOW()) <= 29'
+                        f'FROM "user"\n'
+                        'WHERE DATE_PART(\'day\', NOW() - "create_time") <= 29'
                     ),
                     'comment': 'User information count in the past month.'
                 },
                 {
                     'name': 'user_last_time',
                     'select': (
-                        'SELECT MAX(`create_time`)\n'
-                        f'FROM `{database}`.`user`'
+                        'SELECT MAX("create_time")\n'
+                        f'FROM "user"'
                     ),
                     'comment': 'User last record create time.'
                 }
@@ -318,9 +319,9 @@ async def get_user_data(
     conn: Asyncronous database connection.
     account : User account.
     account_type : User account type.
-        - `Literal['name']`: User name.
-        - `Literal['email']`: User Email.
-        - `Literal['phone']`: User phone mumber.
+        - "Literal['name']": User name.
+        - "Literal['email']": User Email.
+        - "Literal['phone']": User phone mumber.
     filter_invalid : Whether filter invalid user.
 
     Returns
@@ -329,57 +330,60 @@ async def get_user_data(
     """
 
     # Parameters.
-    database = conn.engine.database
     if filter_invalid:
-        sql_where = (
+        sql_where_user = (
             '    WHERE (\n'
-            f'        `{account_type}` = :account\n'
-            '        AND `is_valid` = 1\n'
+            f'        "{account_type}" = :account\n'
+            '        AND "is_valid" = TRUE\n'
             '    )\n'
         )
+        sql_where_role = sql_where_perm = '    WHERE "is_valid" = TRUE\n'
     else:
-        sql_where = '    WHERE `{account_type}` = :account\n'
+        sql_where_user = '    WHERE "{account_type}" = :account\n'
+        sql_where_role = sql_where_perm = ''
 
     # Get.
     sql = (
-        'SELECT ANY_VALUE(`create_time`) AS `create_time`,\n'
-        '    ANY_VALUE(`phone`) AS `phone`,\n'
-        '    ANY_VALUE(`update_time`) AS `update_time`,\n'
-        '    ANY_VALUE(`user`.`user_id`) AS `user_id`,\n'
-        '    ANY_VALUE(`user`.`name`) AS `user_name`,\n'
-        '    ANY_VALUE(`password`) AS `password`,\n'
-        '    ANY_VALUE(`email`) AS `email`,\n'
-        '    ANY_VALUE(`avatar`) AS `avatar`,\n'
-        "    GROUP_CONCAT(DISTINCT `role`.`name` SEPARATOR ';') AS `role_names`,\n"
-        "    GROUP_CONCAT(DISTINCT `perm`.`name` SEPARATOR ';') AS `perm_names`,\n"
-        "    GROUP_CONCAT(DISTINCT `perm`.`api` SEPARATOR ';') AS `perm_apis`\n"
+        'SELECT ANY_VALUE("create_time") AS "create_time",\n'
+        '    ANY_VALUE("phone") AS "phone",\n'
+        '    ANY_VALUE("update_time") AS "update_time",\n'
+        '    ANY_VALUE("user"."user_id") AS "user_id",\n'
+        '    ANY_VALUE("user"."name") AS "user_name",\n'
+        '    ANY_VALUE("password") AS "password",\n'
+        '    ANY_VALUE("email") AS "email",\n'
+        '    ANY_VALUE("avatar") AS "avatar",\n'
+        '    GROUP_CONCAT(DISTINCT "role"."name" SEPARATOR \';\') AS "role_names",\n'
+        '    GROUP_CONCAT(DISTINCT "perm"."name" SEPARATOR \';\') AS "perm_names",\n'
+        '    GROUP_CONCAT(DISTINCT "perm"."api" SEPARATOR \';\') AS "perm_apis"\n'
         'FROM (\n'
-        '    SELECT `create_time`, `update_time`, `user_id`, `password`, `name`, `email`, `phone`, `avatar`\n'
-        f'    FROM `{database}`.`user`\n'
-        f'{sql_where}'
+        '    SELECT "create_time", "update_time", "user_id", "password", "name", "email", "phone", "avatar"\n'
+        f'    FROM "user"\n'
+        f'{sql_where_user}'
         '    LIMIT 1\n'
-        ') as `user`\n'
+        ') as "user"\n'
         'LEFT JOIN (\n'
-        '    SELECT `user_id`, `role_id`\n'
-        f'    FROM `{database}`.`user_role`\n'
-        ') as `user_role`\n'
-        'ON `user_role`.`user_id` = `user`.`user_id`\n'
+        '    SELECT "user_id", "role_id"\n'
+        f'    FROM "user_role"\n'
+        ') as "user_role"\n'
+        'ON "user_role"."user_id" = "user"."user_id"\n'
         'LEFT JOIN (\n'
-        '    SELECT `role_id`, `name`\n'
-        f'    FROM `{database}`.`role`\n'
-        ') AS `role`\n'
-        'ON `user_role`.`role_id` = `role`.`role_id`\n'
+        '    SELECT "role_id", "name"\n'
+        f'    FROM "role"\n'
+        f'{sql_where_role}'
+        ') AS "role"\n'
+        'ON "user_role"."role_id" = "role"."role_id"\n'
         'LEFT JOIN (\n'
-        '    SELECT `role_id`, `perm_id`\n'
-        f'    FROM `{database}`.`role_perm`\n'
-        ') as `role_perm`\n'
-        'ON `role_perm`.`role_id` = `role`.`role_id`\n'
+        '    SELECT "role_id", "perm_id"\n'
+        f'    FROM "role_perm"\n'
+        ') as "role_perm"\n'
+        'ON "role_perm"."role_id" = "role"."role_id"\n'
         'LEFT JOIN (\n'
-        "    SELECT `perm_id`, `name`, `api`\n"
-        f'    FROM `{database}`.`perm`\n'
-        ') AS `perm`\n'
-        'ON `role_perm`.`perm_id` = `perm`.`perm_id`\n'
-        'GROUP BY `user_id`'
+        '    SELECT "perm_id", "name", "api"\n'
+        f'    FROM "perm"\n'
+        f'{sql_where_perm}'
+        ') AS "perm"\n'
+        'ON "role_perm"."perm_id" = "perm"."perm_id"\n'
+        'GROUP BY "user_id"'
     )
     result = await conn.execute(
         sql,
@@ -391,6 +395,12 @@ async def get_user_data(
         info = None
     else:
         row: dict[str, Datetime | Any] = result.to_row()
+        if row['role_names'] is None:
+            row['role_names'] = ''
+        if row['perm_names'] is None:
+            row['perm_names'] = ''
+        if row['perm_apis'] is None:
+            row['perm_apis'] = ''
         info: UserData = {
             'create_time': row['create_time'].timestamp(),
             'udpate_time': row['update_time'].timestamp(),
@@ -425,7 +435,7 @@ async def create_token(
 
     Returns
     -------
-    JSON with `token`.
+    JSON with "token".
     """
 
     # Parameter.
