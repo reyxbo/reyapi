@@ -78,13 +78,13 @@ class DatabaseORMTableUser(rorm.Table):
     __comment__ = 'User information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
-    user_id: int = rorm.Field(rorm.types.INTEGER, key_auto=True, comment='User ID.')
+    user_id: int = rorm.Field(key_auto=True, comment='User ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='User name, use lowercase letters.')
     password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".')
     email: rorm.Email = rorm.Field(rorm.types.VARCHAR(255), index_u=True, comment='User email.')
     phone: str = rorm.Field(rorm.types.CHAR(11), index_u=True, comment='User phone.')
-    avatar: int = rorm.Field(rorm.types.INTEGER, comment='User avatar file ID.')
-    is_valid: bool = rorm.Field(rorm.types.BOOLEAN, field_default='TRUE', not_null=True, comment='Is the valid.')
+    avatar: int = rorm.Field(comment='User avatar file ID.')
+    is_valid: bool = rorm.Field(field_default='TRUE', not_null=True, comment='Is the valid.')
 
 
 class DatabaseORMTableRole(rorm.Table):
@@ -99,7 +99,7 @@ class DatabaseORMTableRole(rorm.Table):
     role_id: int = rorm.Field(rorm.types.SMALLINT, key_auto=True, comment='Role ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='Role name.')
     desc: str = rorm.Field(rorm.types.VARCHAR(500), comment='Role description.')
-    is_valid: bool = rorm.Field(rorm.types.BOOLEAN, field_default='TRUE', not_null=True, comment='Is the valid.')
+    is_valid: bool = rorm.Field(field_default='TRUE', not_null=True, comment='Is the valid.')
 
 
 class DatabaseORMTablePerm(rorm.Table):
@@ -118,7 +118,7 @@ class DatabaseORMTablePerm(rorm.Table):
         rorm.types.VARCHAR(1000),
         comment=r'API method and resource path regular expression "match" pattern, case insensitive, format is "{method} {path}" (e.g. "GET /users").'
     )
-    is_valid: bool = rorm.Field(rorm.types.BOOLEAN, field_default='TRUE', not_null=True, comment='Is the valid.')
+    is_valid: bool = rorm.Field(field_default='TRUE', not_null=True, comment='Is the valid.')
 
 
 class DatabaseORMTableUserRole(rorm.Table):
@@ -130,7 +130,7 @@ class DatabaseORMTableUserRole(rorm.Table):
     __comment__ = 'User and role association table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
-    user_id: int = rorm.Field(rorm.types.INTEGER, key=True, comment='User ID.')
+    user_id: int = rorm.Field(key=True, comment='User ID.')
     role_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Role ID.')
 
 

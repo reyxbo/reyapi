@@ -35,7 +35,7 @@ class DatabaseORMTableInfo(rorm.Table):
     __name__ = 'info'
     __comment__ = 'File information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
-    file_id: int = rorm.Field(rorm.types.INTEGER, key_auto=True, comment='File ID.')
+    file_id: int = rorm.Field(key_auto=True, comment='File ID.')
     md5: str = rorm.Field(rorm.types.CHAR(32), not_null=True, index_n=True, comment='File MD5.')
     name: str = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
     note: str = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
@@ -49,7 +49,7 @@ class DatabaseORMTableData(rorm.Table):
     __name__ = 'data'
     __comment__ = 'File data table.'
     md5: str = rorm.Field(rorm.types.CHAR(32), key=True, comment='File MD5.')
-    size: int = rorm.Field(rorm.types.INTEGER, not_null=True, comment='File bytes size.')
+    size: int = rorm.Field(not_null=True, comment='File bytes size.')
     path: str = rorm.Field(rorm.types.VARCHAR(4095), not_null=True, comment='File disk storage path.')
 
 
