@@ -76,8 +76,8 @@ class DatabaseORMTableUser(rorm.Table):
 
     __name__ = 'user'
     __comment__ = 'User information table.'
-    create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
+    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
     user_id: int = rorm.Field(key_auto=True, comment='User ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='User name, use lowercase letters.')
     password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".')
@@ -94,8 +94,8 @@ class DatabaseORMTableRole(rorm.Table):
 
     __name__ = 'role'
     __comment__ = 'Role information table.'
-    create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
+    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', arg_default=now, not_null=True, index_n=True, comment='Record update time.')
     role_id: int = rorm.Field(rorm.types.SMALLINT, key_auto=True, comment='Role ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='Role name.')
     desc: str = rorm.Field(rorm.types.VARCHAR(500), comment='Role description.')
@@ -109,8 +109,8 @@ class DatabaseORMTablePerm(rorm.Table):
 
     __name__ = 'perm'
     __comment__ = 'API permission information table.'
-    create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
+    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', arg_default=now, not_null=True, index_n=True, comment='Record update time.')
     perm_id: int = rorm.Field(rorm.types.SMALLINT, key_auto=True, comment='Permission ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='Permission name.')
     desc: str = rorm.Field(rorm.types.VARCHAR(500), comment='Permission description.')
@@ -128,8 +128,8 @@ class DatabaseORMTableUserRole(rorm.Table):
 
     __name__ = 'user_role'
     __comment__ = 'User and role association table.'
-    create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
+    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', arg_default=now, not_null=True, index_n=True, comment='Record update time.')
     user_id: int = rorm.Field(key=True, comment='User ID.')
     role_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Role ID.')
 
@@ -141,8 +141,8 @@ class DatabaseORMTableRolePerm(rorm.Table):
 
     __name__ = 'role_perm'
     __comment__ = 'role and permission association table.'
-    create_time: rorm.Datetime = rorm.Field(field_default=':create_time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':update_time', not_null=True, index_n=True, comment='Record update time.')
+    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', arg_default=now, not_null=True, index_n=True, comment='Record update time.')
     role_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Role ID.')
     perm_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Permission ID.')
 
