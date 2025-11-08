@@ -354,7 +354,7 @@ async def get_user_data(
         '    ANY_VALUE("avatar") AS "avatar",\n'
         '    STRING_AGG(DISTINCT "role"."name", \';\') AS "role_names",\n'
         '    STRING_AGG(DISTINCT "perm"."name", \';\') AS "perm_names",\n'
-        '    STRING_AGG(DISTINCT "perm"."api", \';\') AS "perm_apis",\n'
+        '    STRING_AGG(DISTINCT "perm"."api", \';\') AS "perm_apis"\n'
         'FROM (\n'
         '    SELECT "create_time", "update_time", "user_id", "password", "name", "email", "phone", "avatar"\n'
         '    FROM "user"\n'
@@ -383,7 +383,7 @@ async def get_user_data(
         f'{sql_where_perm}'
         ') AS "perm"\n'
         'ON "role_perm"."perm_id" = "perm"."perm_id"\n'
-        'GROUP BY "user_id"'
+        'GROUP BY "user"."user_id"'
     )
     result = await conn.execute(
         sql,
