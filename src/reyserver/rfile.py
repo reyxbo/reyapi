@@ -145,7 +145,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                 {
                     'name': 'total_size',
                     'select': (
-                        'SELECT FORMAT(SUM("size"), 0)\n'
+                        'SELECT TO_CHAR(SUM("size"), \'FM999,999,999,999,999\')\n'
                         'FROM "data"'
                     ),
                     'comment': 'File total byte size.'
@@ -153,7 +153,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                 {
                     'name': 'avg_size',
                     'select': (
-                        'SELECT FORMAT(AVG("size"), 0)\n'
+                        'SELECT TO_CHAR(ROUND(AVG("size"), 0), \'FM999,999,999,999,999\')\n'
                         'FROM "data"'
                     ),
                     'comment': 'File average byte size.'
@@ -161,7 +161,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                 {
                     'name': 'max_size',
                     'select': (
-                        'SELECT FORMAT(MAX("size"), 0)\n'
+                        'SELECT TO_CHAR(MAX("size"), \'FM999,999,999,999,999\')\n'
                         'FROM "data"'
                     ),
                     'comment': 'File maximum byte size.'
