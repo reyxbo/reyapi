@@ -176,7 +176,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'user_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "user"'
+                        'FROM "user"'
                     ),
                     'comment': 'User information count.'
                 },
@@ -184,7 +184,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'role_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "role"'
+                        'FROM "role"'
                     ),
                     'comment': 'Role information count.'
                 },
@@ -192,7 +192,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'perm_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "perm"'
+                        'FROM "perm"'
                     ),
                     'comment': 'Permission information count.'
                 },
@@ -200,7 +200,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'user_day_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "user"\n'
+                        'FROM "user"\n'
                         'WHERE DATE_PART(\'day\', NOW() - "create_time") = 0'
                     ),
                     'comment': 'User information count in the past day.'
@@ -209,7 +209,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'user_week_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "user"\n'
+                        'FROM "user"\n'
                         'WHERE DATE_PART(\'day\', NOW() - "create_time") <= 6'
                     ),
                     'comment': 'User information count in the past week.'
@@ -218,7 +218,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'user_month_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "user"\n'
+                        'FROM "user"\n'
                         'WHERE DATE_PART(\'day\', NOW() - "create_time") <= 29'
                     ),
                     'comment': 'User information count in the past month.'
@@ -227,7 +227,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'user_last_time',
                     'select': (
                         'SELECT MAX("create_time")\n'
-                        f'FROM "user"'
+                        'FROM "user"'
                     ),
                     'comment': 'User last record create time.'
                 }
@@ -352,34 +352,34 @@ async def get_user_data(
         '    ANY_VALUE("password") AS "password",\n'
         '    ANY_VALUE("email") AS "email",\n'
         '    ANY_VALUE("avatar") AS "avatar",\n'
-        '    GROUP_CONCAT(DISTINCT "role"."name" SEPARATOR \';\') AS "role_names",\n'
-        '    GROUP_CONCAT(DISTINCT "perm"."name" SEPARATOR \';\') AS "perm_names",\n'
-        '    GROUP_CONCAT(DISTINCT "perm"."api" SEPARATOR \';\') AS "perm_apis"\n'
+        '    STRING_AGG(DISTINCT "role"."name", \';\') AS "role_names",\n'
+        '    STRING_AGG(DISTINCT "perm"."name", \';\') AS "perm_names",\n'
+        '    STRING_AGG(DISTINCT "perm"."api", \';\') AS "perm_apis",\n'
         'FROM (\n'
         '    SELECT "create_time", "update_time", "user_id", "password", "name", "email", "phone", "avatar"\n'
-        f'    FROM "user"\n'
+        '    FROM "user"\n'
         f'{sql_where_user}'
         '    LIMIT 1\n'
         ') as "user"\n'
         'LEFT JOIN (\n'
         '    SELECT "user_id", "role_id"\n'
-        f'    FROM "user_role"\n'
+        '    FROM "user_role"\n'
         ') as "user_role"\n'
         'ON "user_role"."user_id" = "user"."user_id"\n'
         'LEFT JOIN (\n'
         '    SELECT "role_id", "name"\n'
-        f'    FROM "role"\n'
+        '    FROM "role"\n'
         f'{sql_where_role}'
         ') AS "role"\n'
         'ON "user_role"."role_id" = "role"."role_id"\n'
         'LEFT JOIN (\n'
         '    SELECT "role_id", "perm_id"\n'
-        f'    FROM "role_perm"\n'
+        '    FROM "role_perm"\n'
         ') as "role_perm"\n'
         'ON "role_perm"."role_id" = "role"."role_id"\n'
         'LEFT JOIN (\n'
         '    SELECT "perm_id", "name", "api"\n'
-        f'    FROM "perm"\n'
+        '    FROM "perm"\n'
         f'{sql_where_perm}'
         ') AS "perm"\n'
         'ON "role_perm"."perm_id" = "perm"."perm_id"\n'

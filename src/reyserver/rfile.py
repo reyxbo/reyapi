@@ -73,14 +73,18 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
             'table': 'data_info',
             'select': (
                 'SELECT "b"."last_time", "a"."md5", "a"."size", "b"."names", "b"."notes"\n'
-                f'FROM "data" AS "a"\n'
+                'FROM "data" AS "a"\n'
                 'LEFT JOIN (\n'
                 '    SELECT\n'
                 '        "md5",\n'
-                '        GROUP_CONCAT(DISTINCT("name") ORDER BY "create_time" DESC SEPARATOR \' | \') AS "names",\n'
-                '        GROUP_CONCAT(DISTINCT("note") ORDER BY "create_time" DESC SEPARATOR \' | \') AS "notes",\n'
+                '        STRING_AGG(DISTINCT "name", \' | \') AS "names",\n'
+                '        STRING_AGG(DISTINCT "note", \' | \') AS "notes",\n'
                 '        MAX("create_time") as "last_time"\n'
-                f'    FROM "info"\n'
+                '    FROM (\n'
+                '        SELECT "create_time", "md5", "name", "note"\n'
+                '        FROM "info"\n'
+                '        ORDER BY "create_time" DESC\n'
+                '    ) AS "INFO"\n'
                 '    GROUP BY "md5"\n'
                 '    ORDER BY "last_time" DESC\n'
                 ') AS "b"\n'
@@ -99,7 +103,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "info"'
+                        'FROM "info"'
                     ),
                     'comment': 'File information count.'
                 },
@@ -107,7 +111,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'past_day_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "info"\n'
+                        'FROM "info"\n'
                         'WHERE DATE_PART(\'day\', NOW() - "create_time") = 0'
                     ),
                     'comment': 'File information count in the past day.'
@@ -116,7 +120,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'past_week_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "info"\n'
+                        'FROM "info"\n'
                         'WHERE DATE_PART(\'day\', NOW() - "create_time") <= 6'
                     ),
                     'comment': 'File information count in the past week.'
@@ -125,7 +129,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'past_month_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "info"\n'
+                        'FROM "info"\n'
                         'WHERE DATE_PART(\'day\', NOW() - "create_time") <= 29'
                     ),
                     'comment': 'File information count in the past month.'
@@ -134,7 +138,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'data_count',
                     'select': (
                         'SELECT COUNT(1)\n'
-                        f'FROM "data"'
+                        'FROM "data"'
                     ),
                     'comment': 'File data unique count.'
                 },
@@ -142,7 +146,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'total_size',
                     'select': (
                         'SELECT FORMAT(SUM("size"), 0)\n'
-                        f'FROM "data"'
+                        'FROM "data"'
                     ),
                     'comment': 'File total byte size.'
                 },
@@ -150,7 +154,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'avg_size',
                     'select': (
                         'SELECT FORMAT(AVG("size"), 0)\n'
-                        f'FROM "data"'
+                        'FROM "data"'
                     ),
                     'comment': 'File average byte size.'
                 },
@@ -158,7 +162,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'max_size',
                     'select': (
                         'SELECT FORMAT(MAX("size"), 0)\n'
-                        f'FROM "data"'
+                        'FROM "data"'
                     ),
                     'comment': 'File maximum byte size.'
                 },
@@ -166,7 +170,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                     'name': 'last_time',
                     'select': (
                         'SELECT MAX("create_time")\n'
-                        f'FROM "info"'
+                        'FROM "info"'
                     ),
                     'comment': 'File last record create time.'
                 }
@@ -285,11 +289,11 @@ async def download_file(
     sql = (
         'SELECT "name", (\n'
         '    SELECT "path"\n'
-        f'    FROM "data"\n'
-        f'    WHERE "md5" = "info"."md5"\n'
+        '    FROM "data"\n'
+        '    WHERE "md5" = "info"."md5"\n'
         '    LIMIT 1\n'
         ') AS "path"\n'
-        f'FROM "info"\n'
+        'FROM "info"\n'
         'WHERE "file_id" = :file_id\n'
         'LIMIT 1'
     )
