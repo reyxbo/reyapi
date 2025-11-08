@@ -153,7 +153,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
                 {
                     'name': 'avg_size',
                     'select': (
-                        'SELECT TO_CHAR(ROUND(AVG("size"), 0), \'FM999,999,999,999,999\')\n'
+                        'SELECT TO_CHAR(ROUND(AVG("size")), \'FM999,999,999,999,999\')\n'
                         'FROM "data"'
                     ),
                     'comment': 'File average byte size.'
